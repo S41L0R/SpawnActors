@@ -62,6 +62,7 @@ struct Data {
 	int o_r8;
 	int o_r9;
 	int o_r10;
+	int o_lr;
 
 	int n_r3;
 	int n_r4;
@@ -81,12 +82,23 @@ void mainFn(PPCInterpreter_t* hCPU) {
 
 	uint32_t startData = hCPU->gpr[3]; // Find where data starts from r3
 
-	Data data;
+	Data data; // Keep in mind that all this data is big endian..
 
-	// Stuff goes here
+	memInstance->memory_readMemory(startData, &data);
 
+	// Stuff goes here - this is gonna be called pretty often, you might wanna implement some key check stuff
+	data.n_r3 = 0x400e80b0;
+	data.n_r4 = 0x403325e0;
+	data.n_r5 = 0xffffffff;
+	data.n_r6 = 0x00000000;
+	data.n_r7 = 0x00000000;
+	data.n_r8 = 0x403325e0;
+	data.n_r9 = 0x00000c00;
+	data.n_r10 = 0x00000000;
+	
+	data.enabled = true;
 
-	memInstance->memory_writeMemoryBE(startData, &data);
+	memInstance->memory_writeMemory(startData, &data);
 }
 
 

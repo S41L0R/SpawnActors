@@ -2,7 +2,7 @@
 moduleMatches = 0x6267BFD0
 
 
-0x037b6040 = FunctionToJump:
+0x03142e10 = FunctionToJump:
 
 .origin = codecave
 
@@ -34,21 +34,21 @@ O_LR: ; ...Including the LR register
 
 ; All of our registers to overwrite with
 N_R3:
-.int 0
+.int 1
 N_R4:
-.int 0
+.int 2
 N_R5:
-.int 0
+.int 3
 N_R6:
-.int 0
+.int 4
 N_R7:
-.int 0
+.int 5
 N_R8:
-.int 0
+.int 6
 N_R9:
-.int 0
+.int 7
 N_R10:
-.int 0
+.int 8
 
 CallFunction:
 ; r14 happens to be 0 here, so this works fine.
