@@ -82,7 +82,11 @@ void mainFn(PPCInterpreter_t* hCPU) {
 	uint32_t startData = hCPU->gpr[3]; // Find where data starts from r3
 
 	Data data;
-	memInstance->memory_readMemory(startData, &data);
+
+	// Stuff goes here
+
+
+	memInstance->memory_writeMemoryBE(startData, &data);
 }
 
 
