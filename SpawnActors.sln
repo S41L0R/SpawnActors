@@ -3,12 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31717.71
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CallFunction", "CallFunction.vcxproj", "{21DE7059-465E-43F0-BDAC-0E84C2FE3D32}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CallFunction", "CallFunction\CallFunction.vcxproj", "{21DE7059-465E-43F0-BDAC-0E84C2FE3D32}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Injector", "..\Injector\Injector.vcxproj", "{310013CE-0F0C-41EA-8857-A6B438B8EFBE}"
-	ProjectSection(ProjectDependencies) = postProject
-		{21DE7059-465E-43F0-BDAC-0E84C2FE3D32} = {21DE7059-465E-43F0-BDAC-0E84C2FE3D32}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Injector", "Injector\Injector.vcxproj", "{310013CE-0F0C-41EA-8857-A6B438B8EFBE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
