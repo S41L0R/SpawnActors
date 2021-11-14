@@ -1,0 +1,5 @@
+﻿  dllmain.cpp
+C:\Users\Greenlord\source\repos\CallFunction\util\BotwEdit.h(207): warning C4091: 'static ': ignored on left of 'MemoryInstance::intBE' when no variable is declared
+C:\Users\Greenlord\source\repos\CallFunction\util\BotwEdit.h(201,15): warning C4244: 'initializing': conversion from 'const int' to 'float', possible loss of data
+C:\Users\Greenlord\source\repos\CallFunction\util\BotwEdit.h(203,11): warning C4244: 'return': conversion from 'float' to 'int', possible loss of data
+  CallFunction.vcxproj -> C:\Users\Greenlord\source\repos\CallFunction\Debug\CallFunction.dll

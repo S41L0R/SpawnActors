@@ -1,0 +1,9 @@
+[Definition]
+titleIds = 00050000101C9300,00050000101C9400,00050000101C9500
+name = Spawn Actors
+path = "The Legend of Zelda: Breath of the Wild/Research/SpawnActors"
+description = Spawn Actors!
+version = 7
+
+[Default]
+$enabled = 0
