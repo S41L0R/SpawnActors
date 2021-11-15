@@ -76,6 +76,7 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 
 
 MemoryInstance* memInstance;
+bool prevState = false;
 
 void mainFn(PPCInterpreter_t* hCPU) {
 	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to
@@ -96,7 +97,17 @@ void mainFn(PPCInterpreter_t* hCPU) {
 	data.n_r9 = 0x00000c00;
 	data.n_r10 = 0x00000000;
 	
-	data.enabled = true;
+
+	// Basic key press logic to make sure holding down doesn't spam triggers
+	bool keyPressed = false;
+	if (GetKeyState('Z') & 0x8000)
+		keyPressed = true;
+
+	if (keyPressed && !prevState)
+		data.enabled = true;
+
+	prevState = keyPressed;
+
 
 	memInstance->memory_writeMemoryBE(startData, data);
 }
