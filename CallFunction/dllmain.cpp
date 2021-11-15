@@ -51,27 +51,27 @@ typedef void (*osLib_registerHLEFunctionType)(const char* libraryName, const cha
 
 
 
-struct Data {
-	int enabled;
-
-	int o_r3;
-	int o_r4;
-	int o_r5;
-	int o_r6;
-	int o_r7;
-	int o_r8;
-	int o_r9;
-	int o_r10;
-	int o_lr;
-
-	int n_r3;
-	int n_r4;
-	int n_r5;
-	int n_r6;
-	int n_r7;
+struct Data { // This is reversed compared to the gfx pack because we read as big endian.
+	int n_r10; // We could use a loop to loop through and read elements into the individual
+	int n_r9; // vars in this struct as big endian, but this might be faster.. Also it's easier.
 	int n_r8;
-	int n_r9;
-	int n_r10;
+	int n_r7;
+	int n_r6;
+	int n_r5;
+	int n_r4;
+	int n_r3;
+
+	int o_lr;
+	int o_r10;
+	int o_r9;
+	int o_r8;
+	int o_r7;
+	int o_r6;
+	int o_r5;
+	int o_r4;
+	int o_r3;
+	
+	int enabled;
 };
 
 
@@ -82,9 +82,9 @@ void mainFn(PPCInterpreter_t* hCPU) {
 
 	uint32_t startData = hCPU->gpr[3]; // Find where data starts from r3
 
-	Data data; // Keep in mind that all this data is big endian..
+	Data data;
 
-	memInstance->memory_readMemory(startData, &data);
+	memInstance->memory_readMemoryBE(startData, &data);
 
 	// Stuff goes here - this is gonna be called pretty often, you might wanna implement some key check stuff
 	data.n_r3 = 0x400e80b0;
@@ -98,7 +98,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 	
 	data.enabled = true;
 
-	memInstance->memory_writeMemory(startData, &data);
+	memInstance->memory_writeMemoryBE(startData, data);
 }
 
 

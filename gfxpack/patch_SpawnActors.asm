@@ -34,21 +34,21 @@ O_LR: ; ...Including the LR register
 
 ; All of our registers to overwrite with
 N_R3:
-.int 1
+.int 0
 N_R4:
-.int 2
+.int 0
 N_R5:
-.int 3
+.int 0
 N_R6:
-.int 4
+.int 0
 N_R7:
-.int 5
+.int 0
 N_R8:
-.int 6
+.int 0
 N_R9:
-.int 7
+.int 0
 N_R10:
-.int 8
+.int 0
 
 CallFunction:
 ; r14 happens to be 0 here, so this works fine.
