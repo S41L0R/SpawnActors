@@ -2,7 +2,7 @@
 moduleMatches = 0x6267BFD0
 
 
-0x03142e10 = FunctionToJump:
+0x037b6040 = FunctionToJump:
 
 .origin = codecave
 
