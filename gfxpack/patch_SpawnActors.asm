@@ -1,15 +1,15 @@
 [BotW_SpawnActors_V208]
 moduleMatches = 0x6267BFD0
 
-
-0x037b6040 = FunctionToJump:
-
 .origin = codecave
 
 startData: ; where our data starts
 
 ; Whether our function should be called
 Enabled: 
+.int 0
+
+FunctionToJump:
 .int 0
 
 ; All of our registers to back up
@@ -49,6 +49,8 @@ N_R9:
 .int 0
 N_R10:
 .int 0
+
+
 
 CallFunction:
 ; r14 happens to be 0 here, so this works fine.
@@ -99,7 +101,7 @@ bla import.coreinit.fnCallMain
 
 ; Set up where to jump to...
 lis r3, FunctionToJump@ha
-addi r3, r3, FunctionToJump@l
+lwz r3, FunctionToJump@l(r3)
 mtctr r3
 
 ; ... and where to jump back to

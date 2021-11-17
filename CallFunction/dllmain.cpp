@@ -71,6 +71,7 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 	int o_r4;
 	int o_r3;
 	
+	int fnAddr;
 	int enabled;
 };
 
@@ -96,6 +97,8 @@ void mainFn(PPCInterpreter_t* hCPU) {
 	data.n_r8 = 0x403325e0;
 	data.n_r9 = 0x00000c00;
 	data.n_r10 = 0x00000000;
+
+	data.fnAddr = 0x037b6040;
 	
 
 	// Basic key press logic to make sure holding down doesn't spam triggers
