@@ -77,7 +77,7 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 
 
 MemoryInstance* memInstance;
-bool prevState = false;
+bool prevState = false; // Used for key press logic - keeps track of previous key state
 
 void mainFn(PPCInterpreter_t* hCPU) {
 	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to
