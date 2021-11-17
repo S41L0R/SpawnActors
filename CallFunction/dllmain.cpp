@@ -75,55 +75,63 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 	int enabled;
 };
 
+// ---------------------------------------------------------------------------------
+// This is an example function call.
+// - Feel free to expand / change -
+// Note: This does not take into account stuff like actually setting desired params.
+// ---------------------------------------------------------------------------------
 
 MemoryInstance* memInstance;
 bool prevState = false; // Used for key press logic - keeps track of previous key state
 
 void mainFn(PPCInterpreter_t* hCPU) {
-	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to
-
-	uint32_t startData = hCPU->gpr[3]; // Find where data starts from r3
-
-	Data data;
-
-	memInstance->memory_readMemoryBE(startData, &data);
-
-	// Stuff goes here - this is gonna be called pretty often, you might wanna implement some key check stuff
-	data.n_r3 = 0x400e80b0;
-	data.n_r4 = 0x403325e0;
-	data.n_r5 = 0xffffffff;
-	data.n_r6 = 0x00000000;
-	data.n_r7 = 0x00000000;
-	data.n_r8 = 0x403325e0;
-	data.n_r9 = 0x00000c00;
-	data.n_r10 = 0x00000000;
-
-	data.fnAddr = 0x037b6040;
-	
-
-	// Basic key press logic to make sure holding down doesn't spam triggers
-	bool keyPressed = false;
-	if (GetKeyState('Z') & 0x8000)
-		keyPressed = true;
-
-	if (keyPressed && !prevState)
-		data.enabled = true;
-
-	prevState = keyPressed;
+	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
 
 
-	memInstance->memory_writeMemoryBE(startData, data);
+	// Basic key press logic to make sure holding down doesn't spam triggers //
+	bool keyPressed = false;                                                 //
+	if (GetKeyState('Z') & 0x8000)                                           //
+		keyPressed = true;                                                   //
+	                                                                         //
+	if (keyPressed && !prevState) { // --------------------------------------//
+
+		uint32_t startData = hCPU->gpr[3]; // Find where data starts from r3
+
+		Data data;
+
+		memInstance->memory_readMemoryBE(startData, &data);
+
+		// Set registers for params and stuff
+		data.n_r3 = 0x400e80b0;
+		data.n_r4 = 0x403325e0;
+		data.n_r5 = 0xffffffff;
+		data.n_r6 = 0x00000000;
+		data.n_r7 = 0x00000000;
+		data.n_r8 = 0x403325e0;
+		data.n_r9 = 0x00000c00;
+		data.n_r10 = 0x00000000;
+
+		data.fnAddr = 0x037b6040; // Address to call to
+
+		data.enabled = true; // This tells the assembly patch to trigger one function call
+
+		memInstance->memory_writeMemoryBE(startData, data);
+	}
+
+	prevState = keyPressed; // Again, related to key press logic
 }
 
 
 void init() {
     osLib_registerHLEFunctionType osLib_registerHLEFunction = (osLib_registerHLEFunctionType)GetProcAddress(GetModuleHandleA("Cemu.exe"), "osLib_registerHLEFunction");
-	osLib_registerHLEFunction("coreinit", "fnCallMain", &mainFn);
+	osLib_registerHLEFunction("coreinit", "fnCallMain", &mainFn); // Give our assembly patch something to hook into
 }
 
 
-
-
+// Main DLL entrypoint
+// -------------------
+// By that, I just mean the stuff that gets called when the
+// DLL is loaded or unloaded. The entrypoint from our assembly patch is above.
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
                        LPVOID lpReserved
@@ -132,7 +140,8 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
-		
+		// Just include some niceties.
+		// Not required, but good to have nonetheless.
 		memInstance = new MemoryInstance(GetModuleHandleA(NULL));
 		DebugConsole::consoleInit();
         init();
