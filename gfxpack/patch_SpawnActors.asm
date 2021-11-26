@@ -50,6 +50,77 @@ N_R9:
 N_R10:
 .int 0
 
+padding_0:
+.int 0
+
+; A whole bunch of general storage we can use for whatever we want
+; 256 bytes, to be specific.
+; Broken up into 8 byte sections. (The biggest cemu will allow.)
+STR_0:
+.double 0
+STR_1:
+.double 0
+STR_2:
+.double 0
+STR_3:
+.double 0
+STR_4:
+.double 0
+STR_5:
+.double 0
+STR_6:
+.double 0
+STR_7:
+.double 0
+STR_8:
+.double 0
+STR_9:
+.double 0
+STR_10:
+.double 0
+STR_11:
+.double 0
+STR_12:
+.double 0
+STR_13:
+.double 0
+STR_14:
+.double 0
+STR_15:
+.double 0
+STR_16:
+.double 0
+STR_17:
+.double 0
+STR_18:
+.double 0
+STR_19:
+.double 0
+STR_20:
+.double 0
+STR_21:
+.double 0
+STR_22:
+.double 0
+STR_23:
+.double 0
+STR_24:
+.double 0
+STR_25:
+.double 0
+STR_26:
+.double 0
+STR_27:
+.double 0
+STR_28:
+.double 0
+STR_29:
+.double 0
+STR_30:
+.double 0
+STR_31:
+.double 0
+
 
 
 CallFunction:

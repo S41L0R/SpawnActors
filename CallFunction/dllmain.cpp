@@ -52,8 +52,70 @@ typedef void (*osLib_registerHLEFunctionType)(const char* libraryName, const cha
 
 
 struct Data { // This is reversed compared to the gfx pack because we read as big endian.
-	int n_r10; // We could use a loop to loop through and read elements into the individual
-	int n_r9; // vars in this struct as big endian, but this might be faster.. Also it's easier.
+	char name_31;  // We could use a loop to loop through and read elements into the individual
+	char name_30;  // vars in this struct as big endian, but this might be faster.. Also it's easier.
+	char name_29;  // |
+	char name_28;  // |
+	char name_27;  // |
+	char name_26;  // |
+	char name_25;  // |
+	char name_24;  // |
+	char name_23;  // |
+	char name_22;  // |
+	char name_21;  // |
+	char name_20;  // |
+	char name_19;  // |
+	char name_18;  // |
+	char name_17;  // |
+	char name_16;  // |
+	char name_15;  // |
+	char name_14;  // |
+	char name_13;  // |
+	char name_12;  // |
+	char name_11;  // |
+	char name_10;  // |
+	char name_9;   // |
+	char name_8;   // |
+	char name_7;   // |
+	char name_6;   // |
+	char name_5;   // |
+	char name_4;   // |
+	char name_3;   // |
+	char name_2;   // |
+	char name_1;   // |
+	char name_0;   // |
+	double str_27; // |
+	double str_26; // |
+	double str_25; // |
+	double str_24; // |
+	double str_23; // |
+	double str_22; // |
+	double str_21; // |
+	double str_20; // |
+	double str_19; // |
+	double str_18; // |
+	double str_17; // |
+	double str_16; // |
+	double str_15; // | This here is just general storage.
+	double str_14; // | We can label and type it however we want, though.
+	double str_13; // | We just have to make sure that the amount of bytes is consistant.
+	double str_12; // |
+	double str_11; // |
+	double str_10; // |
+	double str_9;  // |
+	double str_8;  // |
+	double str_7;  // |
+	double str_6;  // |
+	double str_5;  // |
+	double str_4;  // |
+	double str_3;  // |
+	double str_2;  // |
+	double str_1;  // |
+	double str_0;  // |
+	int padding; // This is just padding - sometimes the struct can have an odd number of things, and I've spent the last 3 hours debugging this stupid stupid compiler argghghggggg
+
+	int n_r10; 
+	int n_r9; 
 	int n_r8;
 	int n_r7;
 	int n_r6;
@@ -98,13 +160,27 @@ void mainFn(PPCInterpreter_t* hCPU) {
 		uint32_t startData = hCPU->gpr[3]; // Find where data starts from r3
 
 		Data data;
-
 		memInstance->memory_readMemoryBE(startData, &data);
+
+		// Lets set any data that our params will reference:
+		// -------------------------------------------------
+		// The name:
+		{
+			data.name_0 = 'T';
+			data.name_1 = 'e';
+			data.name_2 = 's';
+			data.name_3 = 't';
+			data.name_4 = '\0'; // Null termination is important.
+		}
+		
+
+		// -------------------------------------------------
 
 		// Set registers for params and stuff
 		data.n_r3 = 0x400e80b0;
-		data.n_r4 = 0x403325e0;
-		data.n_r5 = 0xffffffff;
+		//data.n_r4 = 0x403325e0;
+		data.n_r4 = startData + sizeof(data) - 32 - 0; // Just the location in memory for where we started our string earlier. 
+		data.n_r5 = 0xffffffff;                        // I don't know of a better way to do this other than hardcoding values.
 		data.n_r6 = 0x00000000;
 		data.n_r7 = 0x00000000;
 		data.n_r8 = 0x403325e0;

@@ -247,10 +247,10 @@ public:
 
 	} gameData;
 
+	uint64_t baseAddr;
 private:
 
 	typedef void* (*memory_getBaseType)();
-	uint64_t baseAddr;
 };
 
 namespace DebugConsole {
