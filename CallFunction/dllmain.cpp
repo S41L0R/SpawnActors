@@ -50,40 +50,9 @@ struct PPCInterpreter_t {
 typedef void (*osLib_registerHLEFunctionType)(const char* libraryName, const char* functionName, void(*osFunction)(PPCInterpreter_t* hCPU));
 
 
-
+#pragma pack(1)
 struct Data { // This is reversed compared to the gfx pack because we read as big endian.
-	char name_31;  // We could use a loop to loop through and read elements into the individual
-	char name_30;  // vars in this struct as big endian, but this might be faster.. Also it's easier.
-	char name_29;  // |
-	char name_28;  // |
-	char name_27;  // |
-	char name_26;  // |
-	char name_25;  // |
-	char name_24;  // |
-	char name_23;  // |
-	char name_22;  // |
-	char name_21;  // |
-	char name_20;  // |
-	char name_19;  // |
-	char name_18;  // |
-	char name_17;  // |
-	char name_16;  // |
-	char name_15;  // |
-	char name_14;  // |
-	char name_13;  // |
-	char name_12;  // |
-	char name_11;  // |
-	char name_10;  // |
-	char name_9;   // |
-	char name_8;   // |
-	char name_7;   // |
-	char name_6;   // |
-	char name_5;   // |
-	char name_4;   // |
-	char name_3;   // |
-	char name_2;   // |
-	char name_1;   // |
-	char name_0;   // |
+	char name[32];
 	double str_27; // |
 	double str_26; // |
 	double str_25; // |
@@ -112,7 +81,15 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 	double str_2;  // |
 	double str_1;  // |
 	double str_0;  // |
-	int padding; // This is just padding - sometimes the struct can have an odd number of things, and I've spent the last 3 hours debugging this stupid stupid compiler argghghggggg
+
+	int f_r10;
+	int f_r9;
+	int f_r8;
+	int f_r7;
+	int f_r6;
+	int f_r5;
+	int f_r4;
+	int f_r3;
 
 	int n_r10; 
 	int n_r9; 
@@ -134,6 +111,7 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 	int o_r3;
 	
 	int fnAddr;
+	int interceptRegisters;
 	int enabled;
 };
 
@@ -146,9 +124,38 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 MemoryInstance* memInstance;
 bool prevState = false; // Used for key press logic - keeps track of previous key state
 
+bool setup = false;
+
+MemoryInstance::floatBE oldX = NULL;
+MemoryInstance::floatBE oldY = NULL;
+MemoryInstance::floatBE oldZ = NULL;
+
 void mainFn(PPCInterpreter_t* hCPU) {
 	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
 
+	if (!setup) {
+		uint32_t linkPosOffset;
+		memInstance->memory_readMemoryBE(0x11344418, &linkPosOffset); // Some random reference to link's position that seems to work.
+		memInstance->linkData.PosX = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x50);
+		memInstance->linkData.PosY = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x54);
+		memInstance->linkData.PosZ = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x58);
+
+
+		uint32_t startData = hCPU->gpr[3];
+		Data data;
+		memInstance->memory_readMemoryBE(startData, &data); // Just make sure to intercept stuff..
+		data.interceptRegisters = true;
+		memInstance->memory_writeMemoryBE(startData, data);
+
+		setup = true;
+		return;
+	}
+
+	uint32_t startData = hCPU->gpr[3];
+	Data data;
+	memInstance->memory_readMemoryBE(startData, &data); // Just make sure to intercept stuff..
+	data.interceptRegisters = true;
+	memInstance->memory_writeMemoryBE(startData, data);
 
 	// Basic key press logic to make sure holding down doesn't spam triggers //
 	bool keyPressed = false;                                                 //
@@ -159,33 +166,37 @@ void mainFn(PPCInterpreter_t* hCPU) {
 
 		uint32_t startData = hCPU->gpr[3]; // Find where data starts from r3
 
-		Data data;
-		memInstance->memory_readMemoryBE(startData, &data);
 
 		// Lets set any data that our params will reference:
 		// -------------------------------------------------
-		// The name:
-		{
-			data.name_0 = 'T';
-			data.name_1 = 'e';
-			data.name_2 = 's';
-			data.name_3 = 't';
-			data.name_4 = '\0'; // Null termination is important.
+		memInstance->memory_readMemory(data.f_r6 + (7 * 4) + 0, &oldX); // Back up the old position
+		memInstance->memory_readMemory(data.f_r6 + (7 * 4) + 4, &oldY);
+		memInstance->memory_readMemory(data.f_r6 + (7 * 4) + 8, &oldZ);
+
+		memInstance->memory_writeMemory(data.f_r6 + (7 * 4) + 0, *memInstance->linkData.PosX);
+		memInstance->memory_writeMemory(data.f_r6 + (7 * 4) + 4, *memInstance->linkData.PosY);
+		memInstance->memory_writeMemory(data.f_r6 + (7 * 4) + 8, *memInstance->linkData.PosZ);
+		std::string boko = "Enemy_Bokoblin_Junior";
+
+		{ // Copy to name string storage
+			int pos = sizeof(data.name) - 1;
+			for (char const& c : boko) {
+				memcpy(data.name + pos, &c, 1);
+				pos--;
+			}
 		}
-		
 
 		// -------------------------------------------------
 
 		// Set registers for params and stuff
-		data.n_r3 = 0x400e80b0;
-		//data.n_r4 = 0x403325e0;
-		data.n_r4 = startData + sizeof(data) - 32 - 0; // Just the location in memory for where we started our string earlier. 
-		data.n_r5 = 0xffffffff;                        // I don't know of a better way to do this other than hardcoding values.
-		data.n_r6 = 0x00000000;
-		data.n_r7 = 0x00000000;
-		data.n_r8 = 0x403325e0;
-		data.n_r9 = 0x00000c00;
-		data.n_r10 = 0x00000000;
+		data.n_r3 = data.f_r3;
+		data.n_r4 = startData + sizeof(data) - sizeof(data.name);
+		data.n_r5 = data.f_r5;
+		data.n_r6 = data.f_r6;
+		data.n_r7 = data.f_r7;
+		data.n_r8 = data.f_r8;
+		data.n_r9 = data.f_r9;
+		data.n_r10 = data.f_r10;
 
 		data.fnAddr = 0x037b6040; // Address to call to
 

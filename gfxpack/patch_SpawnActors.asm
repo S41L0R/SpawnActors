@@ -9,6 +9,9 @@ startData: ; where our data starts
 Enabled: 
 .int 0
 
+InterceptRegisters:
+.int 0
+
 FunctionToJump:
 .int 0
 
@@ -50,7 +53,21 @@ N_R9:
 N_R10:
 .int 0
 
-padding_0:
+F_R3:
+.int 0
+F_R4:
+.int 0
+F_R5:
+.int 0
+F_R6:
+.int 0
+F_R7:
+.int 0
+F_R8:
+.int 0
+F_R9:
+.int 0
+F_R10:
 .int 0
 
 ; A whole bunch of general storage we can use for whatever we want
@@ -260,6 +277,7 @@ lwz r10, O_R10@l(r14)
 li r14, 0x0
 
 
+
 ; Do what we were replacing
 lwz r3, 0x30(r3)
 
@@ -272,3 +290,56 @@ b 0x0313ea78
 
 
 0x0313ea74 = b CallFunction ; Send stuff over to our custom function
+
+
+
+; Register finder
+; ----------------------------------------------
+
+0x037b6040 = b GetTargetFnRegisters
+
+GetTargetFnRegisters:
+
+; Set up if statment
+lis r14, InterceptRegisters@ha
+lwz r0, InterceptRegisters@l(r14)
+cmpwi r0, 0x0
+beq InterceptRestoreAndExit ; We can skip over applying params if we're not calling the func, so putting this here is fine.
+
+lis r14, F_R3@ha
+stw r3, F_R3@l(r14)
+
+lis r14, F_R4@ha
+stw r4, F_R4@l(r14)
+
+lis r14, F_R5@ha
+stw r5, F_R5@l(r14)
+
+lis r14, F_R6@ha
+stw r6, F_R6@l(r14)
+
+lis r14, F_R7@ha
+stw r7, F_R7@l(r14)
+
+lis r14, F_R8@ha
+stw r8, F_R8@l(r14)
+
+lis r14, F_R9@ha
+stw r9, F_R9@l(r14)
+
+lis r14, F_R10@ha
+stw r10, F_R10@l(r14)
+
+li r0, 0x0
+lis r14, InterceptRegisters@ha
+stw r0, InterceptRegisters@l(r14)
+
+InterceptRestoreAndExit:
+
+; original instruction:
+stwu r1, -0x38(r1)
+
+; Return
+b 0x037b6044
+
+; ----------------------------------------------

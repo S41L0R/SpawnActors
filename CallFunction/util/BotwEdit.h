@@ -150,7 +150,7 @@ public:
 		return NULL;
 	}
 
-	class floatBE {
+	static class floatBE {
 	public:
 		floatBE() {
 			data = 0.f;
