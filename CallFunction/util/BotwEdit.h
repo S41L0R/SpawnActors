@@ -19,9 +19,9 @@ public:
 			std::array<std::uint8_t, sizeof(T)> raw;
 		} src, dst;
 
-		src.val = val;
+		memcpy(&src.val, &val, sizeof(val));
 		std::reverse_copy(src.raw.begin(), src.raw.end(), dst.raw.begin());
-		val = dst.val;
+		memcpy(&val, &dst.val, sizeof(val));
 	}
 
 	template <typename T>

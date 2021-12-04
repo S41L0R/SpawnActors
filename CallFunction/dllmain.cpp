@@ -52,35 +52,10 @@ typedef void (*osLib_registerHLEFunctionType)(const char* libraryName, const cha
 
 #pragma pack(1)
 struct Data { // This is reversed compared to the gfx pack because we read as big endian.
-	char name[32];
-	double str_27; // |
-	double str_26; // |
-	double str_25; // |
-	double str_24; // |
-	double str_23; // |
-	double str_22; // |
-	double str_21; // |
-	double str_20; // |
-	double str_19; // |
-	double str_18; // |
-	double str_17; // |
-	double str_16; // |
-	double str_15; // | This here is just general storage.
-	double str_14; // | We can label and type it however we want, though.
-	double str_13; // | We just have to make sure that the amount of bytes is consistant.
-	double str_12; // |
-	double str_11; // |
-	double str_10; // |
-	double str_9;  // |
-	double str_8;  // |
-	double str_7;  // |
-	double str_6;  // |
-	double str_5;  // |
-	double str_4;  // |
-	double str_3;  // |
-	double str_2;  // |
-	double str_1;  // |
-	double str_0;  // |
+	char name[64]; // (Not long enough for all actor names...)
+	uint8_t actorStorage[76];
+	uint8_t handle[28];
+	uint8_t storage[88]; // This is just the remainder of storage that isn't repurposed and named
 
 	int f_r10;
 	int f_r9;
@@ -126,19 +101,15 @@ bool prevState = false; // Used for key press logic - keeps track of previous ke
 
 bool setup = false;
 
-MemoryInstance::floatBE oldX = NULL;
-MemoryInstance::floatBE oldY = NULL;
-MemoryInstance::floatBE oldZ = NULL;
-
 void mainFn(PPCInterpreter_t* hCPU) {
 	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
 
 	if (!setup) {
 		uint32_t linkPosOffset;
-		memInstance->memory_readMemoryBE(0x11344418, &linkPosOffset); // Some random reference to link's position that seems to work.
-		memInstance->linkData.PosX = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x50);
-		memInstance->linkData.PosY = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x54);
-		memInstance->linkData.PosZ = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x58);
+		memInstance->memory_readMemoryBE(0x11344418, &linkPosOffset); // Some random reference to link's position that seems to work...
+		memInstance->linkData.PosX = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x50); // oh wait,
+		memInstance->linkData.PosY = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x54); // it's 
+		memInstance->linkData.PosZ = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x58); // inconsistent
 
 
 		uint32_t startData = hCPU->gpr[3];
@@ -153,9 +124,17 @@ void mainFn(PPCInterpreter_t* hCPU) {
 
 	uint32_t startData = hCPU->gpr[3];
 	Data data;
-	memInstance->memory_readMemoryBE(startData, &data); // Just make sure to intercept stuff..
-	data.interceptRegisters = true;
-	memInstance->memory_writeMemoryBE(startData, data);
+	memInstance->memory_readMemoryBE(startData, &data); 
+
+	data.interceptRegisters = true; // Just make sure to intercept stuff..
+
+	int hashId = 0;
+	memInstance->memory_readMemoryBE(data.f_r6 + (6 * 4), &hashId);
+	int thing;
+	if (hashId == -833019966) {
+		int thing = 5;
+	}
+
 
 	// Basic key press logic to make sure holding down doesn't spam triggers //
 	bool keyPressed = false;                                                 //
@@ -169,18 +148,25 @@ void mainFn(PPCInterpreter_t* hCPU) {
 
 		// Lets set any data that our params will reference:
 		// -------------------------------------------------
-		memInstance->memory_readMemory(data.f_r6 + (7 * 4) + 0, &oldX); // Back up the old position
-		memInstance->memory_readMemory(data.f_r6 + (7 * 4) + 4, &oldY);
-		memInstance->memory_readMemory(data.f_r6 + (7 * 4) + 8, &oldZ);
 
-		memInstance->memory_writeMemory(data.f_r6 + (7 * 4) + 0, *memInstance->linkData.PosX);
-		memInstance->memory_writeMemory(data.f_r6 + (7 * 4) + 4, *memInstance->linkData.PosY);
-		memInstance->memory_writeMemory(data.f_r6 + (7 * 4) + 8, *memInstance->linkData.PosZ);
-		std::string boko = "Enemy_Bokoblin_Junior";
+		// Copy needed data over to our own storage to not override actor stuff
+		memInstance->memory_readMemoryBE(data.f_r6, &data.actorStorage);
+		int actorStorageLocation = startData + sizeof(data) - sizeof(data.name) - sizeof(data.actorStorage);
+		memInstance->memory_readMemoryBE(data.f_r7, &data.handle); // Not sure if this cooresponds to the handle, but oh well
+		int handleLocation = startData + sizeof(data) - sizeof(data.name) - sizeof(data.actorStorage) - sizeof(data.handle);
 
-		{ // Copy to name string storage
+		// Set actor pos to link pos
+		float posX = (float)*memInstance->linkData.PosX;
+		float posY = (float)*memInstance->linkData.PosY;
+		float posZ = (float)*memInstance->linkData.PosZ;
+		memcpy(&data.actorStorage[sizeof(data.actorStorage) - 4 - (7 * 4) - 0], &posX, sizeof(float)); // I have less idea
+		memcpy(&data.actorStorage[sizeof(data.actorStorage) - 4 - (7 * 4) - 4], &posY, sizeof(float)); // what's going on with that address
+		memcpy(&data.actorStorage[sizeof(data.actorStorage) - 4 - (7 * 4) - 8], &posZ, sizeof(float)); // than you do... wait I'm lying
+		std::string name = "Enemy_Bokoblin_Junior";
+
+		{ // Copy to name string storage... reversed
 			int pos = sizeof(data.name) - 1;
-			for (char const& c : boko) {
+			for (char const& c : name) {
 				memcpy(data.name + pos, &c, 1);
 				pos--;
 			}
@@ -192,8 +178,8 @@ void mainFn(PPCInterpreter_t* hCPU) {
 		data.n_r3 = data.f_r3;
 		data.n_r4 = startData + sizeof(data) - sizeof(data.name);
 		data.n_r5 = data.f_r5;
-		data.n_r6 = data.f_r6;
-		data.n_r7 = data.f_r7;
+		data.n_r6 = actorStorageLocation;
+		data.n_r7 = handleLocation;
 		data.n_r8 = data.f_r8;
 		data.n_r9 = data.f_r9;
 		data.n_r10 = data.f_r10;
@@ -202,10 +188,11 @@ void mainFn(PPCInterpreter_t* hCPU) {
 
 		data.enabled = true; // This tells the assembly patch to trigger one function call
 
-		memInstance->memory_writeMemoryBE(startData, data);
+		data.interceptRegisters = false; // We don't want to intercept *this* function call
 	}
-
 	prevState = keyPressed; // Again, related to key press logic
+
+	memInstance->memory_writeMemoryBE(startData, data);
 }
 
 
