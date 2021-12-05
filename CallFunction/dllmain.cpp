@@ -111,6 +111,8 @@ void mainFn(PPCInterpreter_t* hCPU) {
 		memInstance->linkData.PosY = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x54); // it's 
 		memInstance->linkData.PosZ = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x58); // inconsistent
 
+		if (*memInstance->linkData.PosX == 0.f && *memInstance->linkData.PosY == 0.f && *memInstance->linkData.PosZ == 0.f)
+			DebugConsole::logPrint("Try again! 0 0 0 Glitch.");
 
 		uint32_t startData = hCPU->gpr[3];
 		Data data;
@@ -132,7 +134,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 	memInstance->memory_readMemoryBE(data.f_r6 + (6 * 4), &hashId);
 	int thing;
 	if (hashId == -833019966) {
-		int thing = 5;
+		int thing = 5; // Debug code, but maybe at one point have it only grab the hashId of a specific actor to resolve inconsistencies..
 	}
 
 
@@ -159,9 +161,31 @@ void mainFn(PPCInterpreter_t* hCPU) {
 		float posX = (float)*memInstance->linkData.PosX;
 		float posY = (float)*memInstance->linkData.PosY;
 		float posZ = (float)*memInstance->linkData.PosZ;
-		memcpy(&data.actorStorage[sizeof(data.actorStorage) - 4 - (7 * 4) - 0], &posX, sizeof(float)); // I have less idea
-		memcpy(&data.actorStorage[sizeof(data.actorStorage) - 4 - (7 * 4) - 4], &posY, sizeof(float)); // what's going on with that address
-		memcpy(&data.actorStorage[sizeof(data.actorStorage) - 4 - (7 * 4) - 8], &posZ, sizeof(float)); // than you do... wait I'm lying
+		memcpy(&data.actorStorage[sizeof(data.actorStorage) - (8 * 4) - 0], &posX, sizeof(float)); // I have less idea
+		memcpy(&data.actorStorage[sizeof(data.actorStorage) - (8 * 4) - 4], &posY, sizeof(float)); // what's going on with that address
+		memcpy(&data.actorStorage[sizeof(data.actorStorage) - (8 * 4) - 8], &posZ, sizeof(float)); // than you do... wait I'm lying
+
+		// We want to make sure there's a fairly high traverseDist
+		float traverseDist = 1000.f;
+		short traverseDistInt = (short)traverseDist;
+		memcpy(&data.actorStorage[sizeof(data.actorStorage) - (11 * 4)], &traverseDist, sizeof(float));
+		memcpy(&data.actorStorage[sizeof(data.actorStorage) - (23 * 2)], &traverseDistInt, sizeof(short));
+
+		int null = 0;
+		memcpy(&data.actorStorage[sizeof(data.actorStorage) - (4 * 4)], &null, sizeof(int)); // mLinkData
+
+		// Might as well null out some other things
+		memcpy(&data.actorStorage[sizeof(data.actorStorage) - (2 * 4)], &null, sizeof(int)); // mData
+		memcpy(&data.actorStorage[sizeof(data.actorStorage) - (3 * 4)], &null, sizeof(int)); // mRootNode
+		memcpy(&data.actorStorage[sizeof(data.actorStorage) - (0 * 4)], &null, sizeof(int)); // idk what this is
+
+		// Oh, and the HashId as well
+		memcpy(&data.actorStorage[sizeof(data.actorStorage) - (7 * 4)], &null, sizeof(int));
+
+
+		
+		
+
 		std::string name = "Enemy_Bokoblin_Junior";
 
 		{ // Copy to name string storage... reversed
@@ -180,9 +204,9 @@ void mainFn(PPCInterpreter_t* hCPU) {
 		data.n_r5 = data.f_r5;
 		data.n_r6 = actorStorageLocation;
 		data.n_r7 = handleLocation;
-		data.n_r8 = data.f_r8;
-		data.n_r9 = data.f_r9;
-		data.n_r10 = data.f_r10;
+		data.n_r8 = 0;
+		data.n_r9 = 1;
+		data.n_r10 = 0;
 
 		data.fnAddr = 0x037b6040; // Address to call to
 
