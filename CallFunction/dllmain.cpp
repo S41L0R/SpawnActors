@@ -176,7 +176,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 
 		// Might as well null out some other things
 		memcpy(&data.actorStorage[sizeof(data.actorStorage) - (2 * 4)], &null, sizeof(int)); // mData
-		memcpy(&data.actorStorage[sizeof(data.actorStorage) - (3 * 4)], &null, sizeof(int)); // mRootNode
+		memcpy(&data.actorStorage[sizeof(data.actorStorage) - (3 * 4)], &null, sizeof(int)); // mProc
 		memcpy(&data.actorStorage[sizeof(data.actorStorage) - (0 * 4)], &null, sizeof(int)); // idk what this is
 
 		// Oh, and the HashId as well
