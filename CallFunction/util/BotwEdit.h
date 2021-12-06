@@ -254,21 +254,21 @@ private:
 };
 
 namespace DebugConsole {
-	void consoleInit();
+	void ConsoleInit();
 	void ConsoleDealloc();
-	void logPrint(const std::string_view& message_view);
-	void logPrint(const char* message);
-	void logPrint(const float messageFloat);
-	std::string readLine();
+	void LogPrint(const std::string_view& message_view);
+	void LogPrint(const char* message);
+	void LogPrint(const float messageFloat);
+	std::string ReadLine();
 	extern HANDLE debugConsoleHandle;
 }
 
 namespace Console {
-	void consoleInit(std::string title);
+	void ConsoleInit(std::string title);
 	void ConsoleDealloc();
-	void logPrint(const std::string_view& message_view);
-	void logPrint(const char* message);
-	void logPrint(const float messageFloat);
-	std::string readLine();
+	void LogPrint(const std::string_view& message_view);
+	void LogPrint(const char* message);
+	void LogPrint(const float messageFloat);
+	std::string ReadLine();
 	extern HANDLE consoleHandle;
 }

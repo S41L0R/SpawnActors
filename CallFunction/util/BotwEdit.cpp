@@ -7,7 +7,7 @@
 #include <Windows.h>
 #include <array>
 #include <algorithm>
-#include <iostream>;
+#include <iostream>
 
 
 struct LinkData {
@@ -84,12 +84,13 @@ MemoryInstance::MemoryInstance(HMODULE cemuModuleHandle)
 
 HANDLE DebugConsole::debugConsoleHandle = NULL;
 
-void DebugConsole::consoleInit() {
+void DebugConsole::ConsoleInit() {
 #ifdef _DEBUG
 	AllocConsole();
 	SetConsoleTitleA("Debug Console");
 	debugConsoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
 	freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
+	freopen_s((FILE**)stdin, "CONOUT$", "w", stderr);
 	freopen_s((FILE**)stdin, "CONIN$", "r", stdin);
 #endif
 }
@@ -100,7 +101,7 @@ void DebugConsole::ConsoleDealloc() {
 #endif
 }
 
-void DebugConsole::logPrint(const std::string_view& message_view) {
+void DebugConsole::LogPrint(const std::string_view& message_view) {
 #ifdef _DEBUG
 	std::string message(message_view);
 	message += "\n";
@@ -110,17 +111,17 @@ void DebugConsole::logPrint(const std::string_view& message_view) {
 #endif
 }
 
-void DebugConsole::logPrint(const char* message) {
+void DebugConsole::LogPrint(const char* message) {
 	std::string stringLine(message);
-	logPrint(stringLine);
+	LogPrint(stringLine);
 }
 
-void DebugConsole::logPrint(const float messageFloat) {
+void DebugConsole::LogPrint(const float messageFloat) {
 	std::string stringLine = std::to_string(messageFloat);
-	logPrint(stringLine);
+	LogPrint(stringLine);
 }
 
-std::string DebugConsole::readLine() {
+std::string DebugConsole::ReadLine() {
 	std::string out;
 	std::getline(std::cin, out);
 	return out;
@@ -128,11 +129,12 @@ std::string DebugConsole::readLine() {
 
 HANDLE Console::consoleHandle = NULL;
 
-void Console::consoleInit(std::string title) {
+void Console::ConsoleInit(std::string title) {
 	AllocConsole();
 	SetConsoleTitleA(title.c_str());
 	consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
 	freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
+	freopen_s((FILE**)stdin, "CONOUT$", "w", stderr);
 	freopen_s((FILE**)stdin, "CONIN$", "r", stdin);
 }
 
@@ -140,7 +142,7 @@ void Console::ConsoleDealloc() {
 	FreeConsole();
 }
 
-void Console::logPrint(const std::string_view& message_view) {
+void Console::LogPrint(const std::string_view& message_view) {
 	std::string message(message_view);
 	message += "\n";
 	DWORD charsWritten = 0;
@@ -148,18 +150,21 @@ void Console::logPrint(const std::string_view& message_view) {
 	OutputDebugStringA(message.c_str());
 }
 
-void Console::logPrint(const char* message) {
+void Console::LogPrint(const char* message) {
 	std::string stringLine(message);
-	logPrint(stringLine);
+	LogPrint(stringLine);
 }
 
-void Console::logPrint(const float messageFloat) {
+void Console::LogPrint(const float messageFloat) {
 	std::string stringLine = std::to_string(messageFloat);
-	logPrint(stringLine);
+	LogPrint(stringLine);
 }
 
-std::string Console::readLine() {
+std::string Console::ReadLine() {
 	std::string out;
-	std::getline(std::cin, out);
-	return out;
+
+	if (std::getline(std::cin, out))
+		return out;
+	else
+		return "ERROR";
 }
