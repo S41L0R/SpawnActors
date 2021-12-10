@@ -4,8 +4,13 @@
 #include <iostream>
 
 #include "util/BotwEdit.h"
+#include "UI.h"
+
 #include "Windows.h"
 
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
 
 
 
@@ -242,7 +247,7 @@ void init() {
 }
 
 /// <summary>
-/// Manages getting console input
+/// Manages getting console input - TEMPORARY while UI is still being developed
 /// </summary>
 DWORD WINAPI ConsoleThread(LPVOID param) {
 	Console::ConsoleInit("SpawnActors Console");
@@ -315,7 +320,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         init();
 
 		// Set up our console thread
-		CreateThread(0, 0, ConsoleThread, hModule, 0, 0);
+		CreateThread(0, 0, ConsoleThread, hModule, 0, 0); // This isn't migrated to Threads because it's temporary
+
+		CreateThread(0, 0, Threads::UIThread, hModule, 0, 0);
 		break;
     case DLL_THREAD_ATTACH:
 		break;
