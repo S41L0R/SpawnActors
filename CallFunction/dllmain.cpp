@@ -181,7 +181,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (17 * 4)], &posZ, sizeof(float));
 
 			// We want to make sure there's a fairly high traverseDist
-			float traverseDist = 1000.f; // Hmm... this kinda proves this isn't really used
+			float traverseDist = 0.f; // Hmm... this kinda proves this isn't really used
 			short traverseDistInt = (short)traverseDist;
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (18 * 4)], &traverseDist, sizeof(float));
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (37 * 2)], &traverseDistInt, sizeof(short));
