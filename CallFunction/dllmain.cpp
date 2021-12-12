@@ -2,6 +2,7 @@
 #include <sstream>
 #include <map>
 #include <iostream>
+#include <shared_mutex>
 
 #include "util/BotwEdit.h"
 #include "UI.h"
@@ -99,14 +100,25 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 	int enabled;
 };
 
+struct QueueActor {
+	float PosX;
+	float PosY;
+	float PosZ;
+	std::string Name;
+};
+
 // ---------------------------------------------------------------------------------
 // This is an example function call.
 // - Feel free to expand / change -
 // Note: This does not take into account stuff like actually setting desired params.
 // ---------------------------------------------------------------------------------
-std::map<char, std::string> keyCodeMap;
+std::map<char, std::vector<std::string>> keyCodeMap;
+
+std::shared_mutex mutex; // Make this thread-safe.
 
 std::map<char, bool> prevKeyStateMap; // Used for key press logic - keeps track of previous key state
+
+std::vector<QueueActor> queuedActors;
 
 
 MemoryInstance* memInstance;
@@ -151,15 +163,30 @@ void mainFn(PPCInterpreter_t* hCPU) {
 
 
 	// Basic key press logic to make sure holding down doesn't spam triggers
-	for (std::map<char, std::string>::iterator keyCodeMapIter = keyCodeMap.begin(); keyCodeMapIter != keyCodeMap.end(); ++keyCodeMapIter) {
+	mutex.lock();
+	for (std::map<char, std::vector<std::string>>::iterator keyCodeMapIter = keyCodeMap.begin(); keyCodeMapIter != keyCodeMap.end(); ++keyCodeMapIter) {
 		char key = keyCodeMapIter->first;
 
 		bool keyPressed = false;
 		if (GetKeyState(key) & 0x8000)
 			keyPressed = true;
-	    
 
 		if (keyPressed && !prevKeyStateMap.find(keyCodeMapIter->first)->second) { // Make sure the key is pressed this frame and wasn't last frame
+			for (std::string name : keyCodeMapIter->second) {
+				QueueActor queueActor;
+				queueActor.Name = name;
+				queueActor.PosX = (float)*memInstance->linkData.PosX;
+				queueActor.PosY = (float)*memInstance->linkData.PosY;
+				queueActor.PosZ = (float)*memInstance->linkData.PosZ;
+
+				queuedActors.push_back(queueActor);
+			}
+		}
+	    
+
+		// Actual actor spawning - just read from queue here.
+		if (queuedActors.size() >= 1) {
+			QueueActor qAct = queuedActors[0];
 
 			uint32_t startData = hCPU->gpr[3]; // Find where data starts from r3
 
@@ -172,13 +199,10 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			int actorStorageLocation = startData + sizeof(data) - sizeof(data.name) - sizeof(data.actorStorage);
 			int mubinLocation = startData + sizeof(data) - sizeof(data.name) - sizeof(data.actorStorage) + (7 * 4); // The MubinIter lives inside the actor btw
 
-			// Set actor pos to link pos
-			float posX = (float)*memInstance->linkData.PosX;
-			float posY = (float)*memInstance->linkData.PosY;
-			float posZ = (float)*memInstance->linkData.PosZ;
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (15 * 4)], &posX, sizeof(float));
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (16 * 4)], &posY, sizeof(float));
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (17 * 4)], &posZ, sizeof(float));
+			// Set actor pos to stored pos
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (15 * 4)], &qAct.PosX, sizeof(float));
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (16 * 4)], &qAct.PosY, sizeof(float));
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (17 * 4)], &qAct.PosZ, sizeof(float));
 
 			// We want to make sure there's a fairly high traverseDist
 			float traverseDist = 0.f; // Hmm... this kinda proves this isn't really used
@@ -220,14 +244,14 @@ void mainFn(PPCInterpreter_t* hCPU) {
 
 
 			// Set name!
-			std::string name = keyCodeMapIter->second;
-
 			{ // Copy to name string storage... reversed
 				int pos = sizeof(data.name) - 1;
-				for (char const& c : name) {
+				for (char const& c : qAct.Name) {
 					memcpy(data.name + pos, &c, 1);
 					pos--;
 				}
+				uint8_t nullByte = 0;
+				memcpy(data.name + pos, &nullByte, 1); // Null terminate!
 			}
 
 			// -------------------------------------------------
@@ -247,6 +271,9 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			data.enabled = true; // This tells the assembly patch to trigger one function call
 
 			data.interceptRegisters = false; // We don't want to intercept *this* function call
+
+			// Gotta remove this actor from the queue!
+			queuedActors.erase(queuedActors.begin());
 		}
 
 		{ // I feel like creating scope today
@@ -255,6 +282,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			itr->second = keyPressed; // Key press logic
 		}
 	}
+	mutex.unlock();
 
 	memInstance->memory_writeMemoryBE(startData, data);
 }
@@ -292,20 +320,32 @@ DWORD WINAPI ConsoleThread(LPVOID param) {
 			Console::LogPrint(
 				"Commands:\n"
 				"'help' - Shows commands\n"
-				"'keycode [key] [actorname]' - Registers keycode for actor spawning\n"
-				"'rmkeycode [key]' - Unregisters keycode for actor spawning"
+				"'keycode [key] [actorname(s)]' - Registers keycode for actor spawning\n"
+				"'rmkeycode [key]' - Unregisters keycode for actor spawning\n"
+				"'pos' - Print link's pos"
 			);
 		}
 		else if (command[0] == "keycode") {
-			if (command.size() == 3) {
-				keyCodeMap.insert({ std::toupper(command[1][0]), command[2] });
+			mutex.lock();
+			if (command.size() >= 3) {
+				std::vector<std::string> actVec;
+				int actorCount = command.size() - 2;
+				for (int i = 0; i < actorCount; i++) {
+					actVec.push_back(command[i + 2]);
+				}
+				if (keyCodeMap.find(command[1][0]) != keyCodeMap.end()) // Remove last version if it exists
+					keyCodeMap.erase(keyCodeMap.find(command[1][0]));
+
+				keyCodeMap.insert({ std::toupper(command[1][0]), actVec });
 				prevKeyStateMap.insert({ std::toupper(command[1][0]), false });
 			}
 			else {
-				Console::LogPrint("Format: keycode [key] [actorname]");
+				Console::LogPrint("Format: keycode [key] [actorname(s)]");
 			}
+			mutex.unlock();
 		}
 		else if (command[0] == "rmkeycode") {
+			mutex.lock();
 			if (command.size() == 2) {
 				keyCodeMap.erase(std::toupper(command[1][0]));
 				prevKeyStateMap.erase(std::toupper(command[1][0]));
@@ -313,6 +353,12 @@ DWORD WINAPI ConsoleThread(LPVOID param) {
 			else {
 				Console::LogPrint("Format: rmkeycode [key]");
 			}
+			mutex.unlock();
+		}
+		else if (command[0] == "pos" && init) {
+			Console::LogPrint(*memInstance->linkData.PosX);
+			Console::LogPrint(*memInstance->linkData.PosY);
+			Console::LogPrint(*memInstance->linkData.PosZ);
 		}
 	}
 	return 0;
