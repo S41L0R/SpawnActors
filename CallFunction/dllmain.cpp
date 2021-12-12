@@ -193,6 +193,16 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (9 * 4)], &null, sizeof(int)); // mData
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (10 * 4)], &null, sizeof(int)); // mProc
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (7 * 4)], &null, sizeof(int)); // idk what this is
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (3 * 4)], &null, sizeof(int)); // or this, either
+
+			
+
+			// Not sure what these are, but they helps with traverseDist issues
+			int traverseDistFixer = 0x043B0000;
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (2 * 4)], &traverseDistFixer, sizeof(int));
+			int traverseDistFixer2 = 0x00000016;
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (1 * 4)], &traverseDistFixer2, sizeof(int));
+			
 
 			// Oh, and the HashId as well
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (14 * 4)], &null, sizeof(int));
