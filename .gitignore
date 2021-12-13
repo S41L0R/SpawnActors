@@ -1,4 +1,5 @@
 .vs
+.vscode
 CallFunction/Debug
 CallFunction/x64
 Injector/Debug

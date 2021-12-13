@@ -31,7 +31,8 @@ static void glfw_error_callback(int error, const char* description)
 /// </summary>
 void DrawItems() {
     ImGui::Begin("Test Window");
-    ImGui::Text("This is an example window");
+    ImGui::Text("Actor-Keycode Mapping");
+    //ImGui::InputText("Keycode", );
     ImGui::End();
 
     ImGui::ShowDemoWindow();

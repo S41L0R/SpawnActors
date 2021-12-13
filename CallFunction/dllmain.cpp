@@ -76,8 +76,8 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 	int f_r4;
 	int f_r3;
 
-	int n_r10; 
-	int n_r9; 
+	int n_r10;
+	int n_r9;
 	int n_r8;
 	int n_r7;
 	int n_r6;
@@ -94,7 +94,7 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 	int o_r5;
 	int o_r4;
 	int o_r3;
-	
+
 	int fnAddr;
 	int interceptRegisters;
 	int enabled;
@@ -121,7 +121,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 		uint32_t linkPosOffset;
 		memInstance->memory_readMemoryBE(0x11344418, &linkPosOffset); // Some random reference to link's position that seems to work...
 		memInstance->linkData.PosX = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x50); // oh wait,
-		memInstance->linkData.PosY = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x54); // it's 
+		memInstance->linkData.PosY = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x54); // it's
 		memInstance->linkData.PosZ = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x58); // inconsistent
 
 		if (*memInstance->linkData.PosX == 0.f && *memInstance->linkData.PosY == 0.f && *memInstance->linkData.PosZ == 0.f)
@@ -139,7 +139,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 
 	uint32_t startData = hCPU->gpr[3];
 	Data data;
-	memInstance->memory_readMemoryBE(startData, &data); 
+	memInstance->memory_readMemoryBE(startData, &data);
 
 	data.interceptRegisters = true; // Just make sure to intercept stuff..
 
@@ -158,7 +158,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 		bool keyPressed = false;
 		if (GetKeyState(key) & 0x8000)
 			keyPressed = true;
-	    
+
 
 		if (keyPressed && !prevKeyStateMap.find(keyCodeMapIter->first)->second) { // Make sure the key is pressed this frame and wasn't last frame
 
@@ -281,6 +281,7 @@ DWORD WINAPI ConsoleThread(LPVOID param) {
 			if (command.size() == 3) {
 				keyCodeMap.insert({ std::toupper(command[1][0]), command[2] });
 				prevKeyStateMap.insert({ std::toupper(command[1][0]), false });
+				Console::LogPrint("Keycode added succesfully");
 			}
 			else {
 				Console::LogPrint("Format: keycode [key] [actorname]");
@@ -290,6 +291,7 @@ DWORD WINAPI ConsoleThread(LPVOID param) {
 			if (command.size() == 2) {
 				keyCodeMap.erase(std::toupper(command[1][0]));
 				prevKeyStateMap.erase(std::toupper(command[1][0]));
+				Console::LogPrint("Keycode Removed Succesfully");
 			}
 			else {
 				Console::LogPrint("Format: rmkeycode [key]");
@@ -315,7 +317,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		// Just include some niceties.
 		// Not required, but good to have nonetheless.
 		memInstance = new MemoryInstance(GetModuleHandleA(NULL));
-		
+
 		// This one is important - sets stuff up so that we can be called by the asm patch
         init();
 
