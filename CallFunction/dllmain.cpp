@@ -170,10 +170,6 @@ void mainFn(PPCInterpreter_t* hCPU) {
 		bool keyPressed = false;
 		if (GetKeyState(key) & 0x8000)
 			keyPressed = true;
-<<<<<<< HEAD
-
-=======
->>>>>>> 5bf0a0e76dd7fea1ff7d26bdc8a27fe3bf398b48
 
 		if (keyPressed && !prevKeyStateMap.find(keyCodeMapIter->first)->second) { // Make sure the key is pressed this frame and wasn't last frame
 			for (std::string name : keyCodeMapIter->second) {
