@@ -53,4 +53,4 @@ r10 = backup_r10;
 ```
 This is an oversimplification, but it's good enough for documentation purposes. One that wishes to understand it further can simply look at the asm patch. Note that the patch only supports registers 3-10. These tend to be the only ones used for passing params to functions ([See here](https://www.cs.uaf.edu/2010/fall/cs301/lecture/12_01_PowerPC.html)).
 
-The dll func (called ``dllFunction()`` in the above example) mostly sets params to values that have previously been seen to work well. It does this by copying values to memory allocated via the assembly patch.
+The DLL function (called ``dllFunc()`` in the above example) mostly sets params to values that have previously been seen to work well. It does this by copying values to memory allocated via the assembly patch.
