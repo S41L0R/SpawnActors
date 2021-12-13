@@ -63,9 +63,8 @@ typedef void (*osLib_registerHLEFunctionType)(const char* libraryName, const cha
 
 #pragma pack(1)
 struct Data { // This is reversed compared to the gfx pack because we read as big endian.
-	char name[64]; // (Not long enough for all actor names...)
+	char name[152]; // We'll allocate all unused storage for use for name storage.. just in case of a really long actor name
 	uint8_t actorStorage[104];
-	uint8_t storage[88]; // This is just the remainder of storage that isn't repurposed and named
 
 	int f_r10;
 	int f_r9;
