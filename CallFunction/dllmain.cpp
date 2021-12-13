@@ -2,6 +2,7 @@
 #include <sstream>
 #include <map>
 #include <iostream>
+#include <shared_mutex>
 
 #include "util/BotwEdit.h"
 #include "UI.h"
@@ -63,8 +64,7 @@ typedef void (*osLib_registerHLEFunctionType)(const char* libraryName, const cha
 #pragma pack(1)
 struct Data { // This is reversed compared to the gfx pack because we read as big endian.
 	char name[64]; // (Not long enough for all actor names...)
-	uint8_t actorStorage[76];
-	uint8_t handle[28];
+	uint8_t actorStorage[104];
 	uint8_t storage[88]; // This is just the remainder of storage that isn't repurposed and named
 
 	int f_r10;
@@ -100,14 +100,25 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 	int enabled;
 };
 
+struct QueueActor {
+	float PosX;
+	float PosY;
+	float PosZ;
+	std::string Name;
+};
+
 // ---------------------------------------------------------------------------------
 // This is an example function call.
 // - Feel free to expand / change -
 // Note: This does not take into account stuff like actually setting desired params.
 // ---------------------------------------------------------------------------------
-std::map<char, std::string> keyCodeMap;
+std::map<char, std::vector<std::string>> keyCodeMap;
+
+std::shared_mutex mutex; // Make this thread-safe.
 
 std::map<char, bool> prevKeyStateMap; // Used for key press logic - keeps track of previous key state
+
+std::vector<QueueActor> queuedActors;
 
 
 MemoryInstance* memInstance;
@@ -152,15 +163,34 @@ void mainFn(PPCInterpreter_t* hCPU) {
 
 
 	// Basic key press logic to make sure holding down doesn't spam triggers
-	for (std::map<char, std::string>::iterator keyCodeMapIter = keyCodeMap.begin(); keyCodeMapIter != keyCodeMap.end(); ++keyCodeMapIter) {
+	mutex.lock();
+	for (std::map<char, std::vector<std::string>>::iterator keyCodeMapIter = keyCodeMap.begin(); keyCodeMapIter != keyCodeMap.end(); ++keyCodeMapIter) {
 		char key = keyCodeMapIter->first;
 
 		bool keyPressed = false;
 		if (GetKeyState(key) & 0x8000)
 			keyPressed = true;
+<<<<<<< HEAD
 
+=======
+>>>>>>> 5bf0a0e76dd7fea1ff7d26bdc8a27fe3bf398b48
 
 		if (keyPressed && !prevKeyStateMap.find(keyCodeMapIter->first)->second) { // Make sure the key is pressed this frame and wasn't last frame
+			for (std::string name : keyCodeMapIter->second) {
+				QueueActor queueActor;
+				queueActor.Name = name;
+				queueActor.PosX = (float)*memInstance->linkData.PosX;
+				queueActor.PosY = (float)*memInstance->linkData.PosY;
+				queueActor.PosZ = (float)*memInstance->linkData.PosZ;
+
+				queuedActors.push_back(queueActor);
+			}
+		}
+	    
+
+		// Actual actor spawning - just read from queue here.
+		if (queuedActors.size() >= 1) {
+			QueueActor qAct = queuedActors[0];
 
 			uint32_t startData = hCPU->gpr[3]; // Find where data starts from r3
 
@@ -169,46 +199,63 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			// -------------------------------------------------
 
 			// Copy needed data over to our own storage to not override actor stuff
-			memInstance->memory_readMemoryBE(data.f_r6, &data.actorStorage);
+			memInstance->memory_readMemoryBE(data.f_r7, &data.actorStorage);
 			int actorStorageLocation = startData + sizeof(data) - sizeof(data.name) - sizeof(data.actorStorage);
-			memInstance->memory_readMemoryBE(data.f_r7, &data.handle); // Not sure if this cooresponds to the handle, but oh well
-			int handleLocation = startData + sizeof(data) - sizeof(data.name) - sizeof(data.actorStorage) - sizeof(data.handle);
+			int mubinLocation = startData + sizeof(data) - sizeof(data.name) - sizeof(data.actorStorage) + (7 * 4); // The MubinIter lives inside the actor btw
 
-			// Set actor pos to link pos
-			float posX = (float)*memInstance->linkData.PosX;
-			float posY = (float)*memInstance->linkData.PosY;
-			float posZ = (float)*memInstance->linkData.PosZ;
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (8 * 4) - 0], &posX, sizeof(float)); // I have less idea
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (8 * 4) - 4], &posY, sizeof(float)); // what's going on with that address
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (8 * 4) - 8], &posZ, sizeof(float)); // than you do... wait I'm lying
+			// Set actor pos to stored pos
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (15 * 4)], &qAct.PosX, sizeof(float));
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (16 * 4)], &qAct.PosY, sizeof(float));
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (17 * 4)], &qAct.PosZ, sizeof(float));
 
 			// We want to make sure there's a fairly high traverseDist
-			float traverseDist = 1000.f;
+			float traverseDist = 0.f; // Hmm... this kinda proves this isn't really used
 			short traverseDistInt = (short)traverseDist;
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (11 * 4)], &traverseDist, sizeof(float));
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (23 * 2)], &traverseDistInt, sizeof(short));
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (18 * 4)], &traverseDist, sizeof(float));
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (37 * 2)], &traverseDistInt, sizeof(short));
 
 			int null = 0;
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (4 * 4)], &null, sizeof(int)); // mLinkData
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (11 * 4)], &null, sizeof(int)); // mLinkData
 
 			// Might as well null out some other things
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (2 * 4)], &null, sizeof(int)); // mData
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (3 * 4)], &null, sizeof(int)); // mProc
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (0 * 4)], &null, sizeof(int)); // idk what this is
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (9 * 4)], &null, sizeof(int)); // mData
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (10 * 4)], &null, sizeof(int)); // mProc
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (7 * 4)], &null, sizeof(int)); // idk what this is
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (3 * 4)], &null, sizeof(int)); // or this, either
+
+			
+
+			// Not sure what these are, but they helps with traverseDist issues
+			int traverseDistFixer = 0x043B0000;
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (2 * 4)], &traverseDistFixer, sizeof(int));
+			int traverseDistFixer2 = 0x00000016;
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (1 * 4)], &traverseDistFixer2, sizeof(int));
+			
 
 			// Oh, and the HashId as well
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (7 * 4)], &null, sizeof(int));
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (14 * 4)], &null, sizeof(int));
+
+			// And we can make mRevivalGameDataFlagHash an invalid handle
+			int invalid = -1;
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (12 * 4)], &invalid, sizeof(int));
+			// And whatever this is, too
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (13 * 4)], &invalid, sizeof(int));
+
+			// We can also get rid of this junk
+			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (8 * 4)], &invalid, sizeof(int));
+
+
 
 
 			// Set name!
-			std::string name = keyCodeMapIter->second;
-
 			{ // Copy to name string storage... reversed
 				int pos = sizeof(data.name) - 1;
-				for (char const& c : name) {
+				for (char const& c : qAct.Name) {
 					memcpy(data.name + pos, &c, 1);
 					pos--;
 				}
+				uint8_t nullByte = 0;
+				memcpy(data.name + pos, &nullByte, 1); // Null terminate!
 			}
 
 			// -------------------------------------------------
@@ -217,8 +264,8 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			data.n_r3 = data.f_r3;
 			data.n_r4 = startData + sizeof(data) - sizeof(data.name);
 			data.n_r5 = data.f_r5;
-			data.n_r6 = actorStorageLocation;
-			data.n_r7 = handleLocation;
+			data.n_r6 = mubinLocation;
+			data.n_r7 = actorStorageLocation;
 			data.n_r8 = 0;
 			data.n_r9 = 1;
 			data.n_r10 = 0;
@@ -228,6 +275,9 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			data.enabled = true; // This tells the assembly patch to trigger one function call
 
 			data.interceptRegisters = false; // We don't want to intercept *this* function call
+
+			// Gotta remove this actor from the queue!
+			queuedActors.erase(queuedActors.begin());
 		}
 
 		{ // I feel like creating scope today
@@ -236,6 +286,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			itr->second = keyPressed; // Key press logic
 		}
 	}
+	mutex.unlock();
 
 	memInstance->memory_writeMemoryBE(startData, data);
 }
@@ -273,21 +324,33 @@ DWORD WINAPI ConsoleThread(LPVOID param) {
 			Console::LogPrint(
 				"Commands:\n"
 				"'help' - Shows commands\n"
-				"'keycode [key] [actorname]' - Registers keycode for actor spawning\n"
-				"'rmkeycode [key]' - Unregisters keycode for actor spawning"
+				"'keycode [key] [actorname(s)]' - Registers keycode for actor spawning\n"
+				"'rmkeycode [key]' - Unregisters keycode for actor spawning\n"
+				"'pos' - Print link's pos"
 			);
 		}
 		else if (command[0] == "keycode") {
-			if (command.size() == 3) {
-				keyCodeMap.insert({ std::toupper(command[1][0]), command[2] });
+			mutex.lock();
+			if (command.size() >= 3) {
+				std::vector<std::string> actVec;
+				int actorCount = command.size() - 2;
+				for (int i = 0; i < actorCount; i++) {
+					actVec.push_back(command[i + 2]);
+				}
+				if (keyCodeMap.find(command[1][0]) != keyCodeMap.end()) // Remove last version if it exists
+					keyCodeMap.erase(keyCodeMap.find(command[1][0]));
+
+				keyCodeMap.insert({ std::toupper(command[1][0]), actVec });
 				prevKeyStateMap.insert({ std::toupper(command[1][0]), false });
 				Console::LogPrint("Keycode added succesfully");
 			}
 			else {
-				Console::LogPrint("Format: keycode [key] [actorname]");
+				Console::LogPrint("Format: keycode [key] [actorname(s)]");
 			}
+			mutex.unlock();
 		}
 		else if (command[0] == "rmkeycode") {
+			mutex.lock();
 			if (command.size() == 2) {
 				keyCodeMap.erase(std::toupper(command[1][0]));
 				prevKeyStateMap.erase(std::toupper(command[1][0]));
@@ -296,6 +359,12 @@ DWORD WINAPI ConsoleThread(LPVOID param) {
 			else {
 				Console::LogPrint("Format: rmkeycode [key]");
 			}
+			mutex.unlock();
+		}
+		else if (command[0] == "pos" && init) {
+			Console::LogPrint(*memInstance->linkData.PosX);
+			Console::LogPrint(*memInstance->linkData.PosY);
+			Console::LogPrint(*memInstance->linkData.PosZ);
 		}
 	}
 	return 0;
