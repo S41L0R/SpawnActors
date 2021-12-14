@@ -135,10 +135,11 @@ void mainFn(PPCInterpreter_t* hCPU) {
 
 		// Realistically, no one's gonna be at *exactly* 0 0 0
 		if (*memInstance->linkData.PosX == 0.f && *memInstance->linkData.PosY == 0.f && *memInstance->linkData.PosZ == 0.f) {
-			linkPosOffset -= 0x48E700; // Just in case we use this later lol
-			memInstance->linkData.PosX += 102;
-			memInstance->linkData.PosY += 102;
-			memInstance->linkData.PosZ += 102;
+			Console::LogPrint("Whelp... 0 0 0 Glitch. Restart cemu and try again!");
+			Console::LogPrint("I really need to figure out why this happens...");
+			Console::LogPrint("I could do what LibreVR's Memory Editor does, which is an AOB scan, but the problems I have with that are:");
+			Console::LogPrint("  A. It's really slow");
+			Console::LogPrint("  B. It requires some complicated region finding");
 		}
 
 		uint32_t startData = hCPU->gpr[3];
