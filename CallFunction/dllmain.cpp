@@ -13,6 +13,9 @@
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 
+#include <json/value.h>
+#include <fstream>
+
 
 
 // This stuff here was yoinked from BetterVR
@@ -124,6 +127,11 @@ MemoryInstance* memInstance;
 
 bool setup = false;
 
+///Open JSON file with the list of enemies and weapon types
+std::ifstream enemyFile('enemyData.json', std::ifstream::binary);
+enemyFile >> enemyData
+enemyDataLoc = &enemyData
+
 void mainFn(PPCInterpreter_t* hCPU) {
 	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
 
@@ -185,7 +193,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 				queuedActors.push_back(queueActor);
 			}
 		}
-	    
+
 
 		// Actual actor spawning - just read from queue here.
 		if (queuedActors.size() >= 1) {
@@ -222,14 +230,14 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (7 * 4)], &null, sizeof(int)); // idk what this is
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (3 * 4)], &null, sizeof(int)); // or this, either
 
-			
+
 
 			// Not sure what these are, but they helps with traverseDist issues
 			int traverseDistFixer = 0x043B0000;
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (2 * 4)], &traverseDistFixer, sizeof(int));
 			int traverseDistFixer2 = 0x00000016;
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (1 * 4)], &traverseDistFixer2, sizeof(int));
-			
+
 
 			// Oh, and the HashId as well
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (14 * 4)], &null, sizeof(int));
