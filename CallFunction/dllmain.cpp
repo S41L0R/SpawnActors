@@ -128,15 +128,14 @@ void mainFn(PPCInterpreter_t* hCPU) {
 	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
 
 	if (!setup) {
-		uint32_t linkPosOffset;
-		memInstance->memory_readMemoryBE(0x11344418, &linkPosOffset); // Some random reference to link's position that seems to work...
+		uint32_t linkPosOffset = 0x113444F0;
 		memInstance->linkData.PosX = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x50); // oh wait,
 		memInstance->linkData.PosY = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x54); // it's
 		memInstance->linkData.PosZ = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x58); // inconsistent
 
 		// Realistically, no one's gonna be at *exactly* 0 0 0
 		if (*memInstance->linkData.PosX == 0.f && *memInstance->linkData.PosY == 0.f && *memInstance->linkData.PosZ == 0.f) {
-			linkPosOffset += 102; // Just in case we use this later lol
+			linkPosOffset -= 0x48E700; // Just in case we use this later lol
 			memInstance->linkData.PosX += 102;
 			memInstance->linkData.PosY += 102;
 			memInstance->linkData.PosZ += 102;
