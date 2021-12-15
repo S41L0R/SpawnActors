@@ -391,6 +391,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		// This one is important - sets stuff up so that we can be called by the asm patch
         init();
 
+		// And set up ActorData
+		ActorData::InitDefaultValues();
+
 		// Set up our console thread
 		CreateThread(0, 0, ConsoleThread, hModule, 0, 0); // This isn't migrated to Threads because it's temporary
 

@@ -3,7 +3,7 @@
 #include <vector>
 #include <map>
 
-namespace EnemyData {
+namespace ActorData {
 	struct Enemy {
 		std::vector<std::string> Variants;
 		std::vector<std::string> WieldableProfiles;
