@@ -6,6 +6,7 @@
 
 #include "util/BotwEdit.h"
 #include "UI.h"
+#include "ActorData.h"
 
 #include "Windows.h"
 
