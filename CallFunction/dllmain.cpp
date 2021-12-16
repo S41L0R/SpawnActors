@@ -197,9 +197,15 @@ void mainFn(PPCInterpreter_t* hCPU) {
 					for (std::map<std::string, ActorData::Enemy>::iterator iter = ActorData::EnemyClasses.begin(); iter != ActorData::EnemyClasses.end(); ++iter) {
 						if (keyCodeActor.Name.find(iter->first, 0) == 0) {
 							std::string name = iter->first;
-							name.append("_");
-							name.append(iter->second.Variants.at(std::rand() % iter->second.Variants.size()));
+							std::string variant = iter->second.Variants.at(std::rand() % iter->second.Variants.size());
+							if variant != ""{
+								name.append("_");
+								name.append(variant);
+							}
 
+							while (int i <= iter->second.WieldableProfiles.size()){
+								
+							}
 							queueActor.Name = name;
 						}
 						else
@@ -228,7 +234,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 				queuedActors.push_back(queueActor);
 			}
 		}
-	    
+
 
 		// Actual actor spawning - just read from queue here.
 		if (queuedActors.size() >= 1) {
@@ -265,14 +271,14 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (7 * 4)], &null, sizeof(int)); // idk what this is
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (3 * 4)], &null, sizeof(int)); // or this, either
 
-			
+
 
 			// Not sure what these are, but they helps with traverseDist issues
 			int traverseDistFixer = 0x043B0000;
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (2 * 4)], &traverseDistFixer, sizeof(int));
 			int traverseDistFixer2 = 0x00000016;
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (1 * 4)], &traverseDistFixer2, sizeof(int));
-			
+
 
 			// Oh, and the HashId as well
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (14 * 4)], &null, sizeof(int));
