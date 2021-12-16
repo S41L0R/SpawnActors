@@ -203,8 +203,8 @@ void mainFn(PPCInterpreter_t* hCPU) {
 								name.append(variant);
 							}
 
-							while (int i <= iter->second.WieldableProfiles.size()){
-								
+							while (int i <= iter->second.MaxWeaponSlots){
+
 							}
 							queueActor.Name = name;
 						}
