@@ -100,6 +100,19 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 	int enabled;
 };
 
+struct KeyCodeActor {
+	KeyCodeActor(std::string name) {
+		Name = name;
+	}
+	KeyCodeActor(std::string name, bool randomized) {
+		Name = name;
+		Randomized = randomized;
+	}
+
+	std::string Name;
+	bool Randomized = false;
+};
+
 struct QueueActor {
 	float PosX;
 	float PosY;
@@ -112,7 +125,7 @@ struct QueueActor {
 // - Feel free to expand / change -
 // Note: This does not take into account stuff like actually setting desired params.
 // ---------------------------------------------------------------------------------
-std::map<char, std::vector<std::string>> keyCodeMap;
+std::map<char, std::vector<KeyCodeActor>> keyCodeMap;
 
 std::shared_mutex mutex; // Make this thread-safe.
 
@@ -169,7 +182,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 
 	// Basic key press logic to make sure holding down doesn't spam triggers
 	mutex.lock();
-	for (std::map<char, std::vector<std::string>>::iterator keyCodeMapIter = keyCodeMap.begin(); keyCodeMapIter != keyCodeMap.end(); ++keyCodeMapIter) {
+	for (std::map<char, std::vector<KeyCodeActor>>::iterator keyCodeMapIter = keyCodeMap.begin(); keyCodeMapIter != keyCodeMap.end(); ++keyCodeMapIter) {
 		char key = keyCodeMapIter->first;
 
 		bool keyPressed = false;
@@ -177,11 +190,39 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			keyPressed = true;
 
 		if (keyPressed && !prevKeyStateMap.find(keyCodeMapIter->first)->second) { // Make sure the key is pressed this frame and wasn't last frame
-			for (std::string name : keyCodeMapIter->second) {
+			for (KeyCodeActor keyCodeActor : keyCodeMapIter->second) {
 				QueueActor queueActor;
-				queueActor.Name = name;
+				// Set name
+				if (keyCodeActor.Randomized) {
+					for (std::map<std::string, ActorData::Enemy>::iterator iter = ActorData::EnemyClasses.begin(); iter != ActorData::EnemyClasses.end(); ++iter) {
+						if (keyCodeActor.Name.find(iter->first, 0) == 0) {
+							std::string name = iter->first;
+							name.append("_");
+							name.append(iter->second.Variants.at(std::rand() % iter->second.Variants.size()));
+
+							queueActor.Name = name;
+						}
+						else
+							queueActor.Name = keyCodeActor.Name;
+					}
+
+					for (std::map<std::string, ActorData::Weapon>::iterator iter = ActorData::WeaponClasses.begin(); iter != ActorData::WeaponClasses.end(); ++iter) {
+						if (keyCodeActor.Name.find(iter->first, 0) == 0) {
+							std::string name = iter->first;
+							name.append("_");
+							name.append(iter->second.Variants.at(std::rand() % iter->second.Variants.size()));
+
+							queueActor.Name = name;
+						}
+						else
+							queueActor.Name = keyCodeActor.Name;
+					}
+				}
+				else
+					queueActor.Name = keyCodeActor.Name;
+
 				queueActor.PosX = (float)*memInstance->linkData.PosX;
-				queueActor.PosY = (float)*memInstance->linkData.PosY;
+				queueActor.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
 				queueActor.PosZ = (float)*memInstance->linkData.PosZ;
 
 				queuedActors.push_back(queueActor);
@@ -333,10 +374,14 @@ DWORD WINAPI ConsoleThread(LPVOID param) {
 		else if (command[0] == "keycode") {
 			mutex.lock();
 			if (command.size() >= 3) {
-				std::vector<std::string> actVec;
+				std::vector<KeyCodeActor> actVec;
 				int actorCount = command.size() - 2;
 				for (int i = 0; i < actorCount; i++) {
-					actVec.push_back(command[i + 2]);
+					bool randomized = (command[i + 2][0] == '\\');
+					if (randomized)
+						command[i + 2].erase(0, 1);
+
+					actVec.push_back(KeyCodeActor(command[i + 2], randomized));
 				}
 				if (keyCodeMap.find(command[1][0]) != keyCodeMap.end()) // Remove last version if it exists
 					keyCodeMap.erase(keyCodeMap.find(command[1][0]));

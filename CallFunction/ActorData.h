@@ -10,7 +10,7 @@ namespace ActorData {
 	};
 
 	struct Weapon {
-
+		std::vector<std::string> Variants;
 	};
 
 
@@ -64,28 +64,38 @@ namespace ActorData {
 		// -----------------------------------------------
 		// Sword
 		{
+			std::vector<std::string> variants = { "073", "023" };
 			Weapon weapon;
-			WeaponClasses.insert(std::pair<const std::string, Weapon>("Sword", weapon));
+			weapon.Variants = variants;
+			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_Sword", weapon));
 		}
 		// LSword
 		{
+			std::vector<std::string> variants = { "097", "055" };
 			Weapon weapon;
-			WeaponClasses.insert(std::pair<const std::string, Weapon>("LSword", weapon));
+			weapon.Variants = variants;
+			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_LSword", weapon));
 		}
 		// Spear
 		{
+			std::vector<std::string> variants = { "038", "024" };
 			Weapon weapon;
-			WeaponClasses.insert(std::pair<const std::string, Weapon>("Spear", weapon));
+			weapon.Variants = variants;
+			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_Spear", weapon));
 		}
 		// Bow
 		{
+			std::vector<std::string> variants = { "032", "016" };
 			Weapon weapon;
-			WeaponClasses.insert(std::pair<const std::string, Weapon>("Bow", weapon));
+			weapon.Variants = variants;
+			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_Bow", weapon));
 		}
 		// Shield
 		{
+			std::vector<std::string> variants = { "014", "018" };
 			Weapon weapon;
-			WeaponClasses.insert(std::pair<const std::string, Weapon>("Shield", weapon));
+			weapon.Variants = variants;
+			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_Shield", weapon));
 		}
 	}
 };
