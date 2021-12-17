@@ -198,14 +198,14 @@ void mainFn(PPCInterpreter_t* hCPU) {
 						if (keyCodeActor.Name.find(iter->first, 0) == 0) {
 							std::string name = iter->first;
 							std::string variant = iter->second.Variants.at(std::rand() % iter->second.Variants.size());
-							if variant != ""{
+							if (variant != std::string("")){
 								name.append("_");
 								name.append(variant);
 							}
 
-							while (int i <= iter->second.MaxWeaponSlots){
+							//while (int i = 0; i <= iter->second.MaxWeaponSlots){
 
-							}
+							//}
 							queueActor.Name = name;
 						}
 						else

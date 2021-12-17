@@ -118,7 +118,7 @@ namespace ActorData {
 			Enemy enemy;
 			enemy.Variants = variants;
 			enemy.WieldableProfiles = wieldableProfiles;
-			EnemyClasses.insert(std::pair<const std::string, Enemy>("Enemy_Golem", enemy))
+			EnemyClasses.insert(std::pair<const std::string, Enemy>("Enemy_Golem", enemy));
 		}
 
 		// Enemy_Giant
@@ -134,7 +134,7 @@ namespace ActorData {
 			Enemy enemy;
 			enemy.Variants = variants;
 			enemy.WieldableProfiles = wieldableProfiles;
-			EnemyClasses.insert(std::pair<const std::string, Enemy>("Enemy_Lynel", enemy))
+			EnemyClasses.insert(std::pair<const std::string, Enemy>("Enemy_Lynel", enemy));
 		}
 
 		// -----------------------------------------------
@@ -153,8 +153,8 @@ namespace ActorData {
 		{
 			std::vector<std::string> variants = {"038", "030"};
 			Weapon weapon;
-			weapon.Variants = std::vector<std::string> Variants;
-			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_Shield", weapon))
+			weapon.Variants = variants;
+			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_Shield", weapon));
 		}
 
 		// Lsword
