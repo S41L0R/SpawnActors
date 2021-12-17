@@ -193,9 +193,16 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			for (KeyCodeActor keyCodeActor : keyCodeMapIter->second) {
 				QueueActor queueActor;
 				// Set name
+				queueActor.Name = keyCodeActor.Name; // Default
 				if (keyCodeActor.Randomized) {
+					int largestAcceptedNameLength = 0;
 					for (std::map<std::string, ActorData::Enemy>::iterator iter = ActorData::EnemyClasses.begin(); iter != ActorData::EnemyClasses.end(); ++iter) {
 						if (keyCodeActor.Name.find(iter->first, 0) == 0) {
+
+							if (iter->first.length() < largestAcceptedNameLength) // Some optimizations
+								continue;
+							largestAcceptedNameLength = iter->first.length();
+
 							std::string name = iter->first;
 							std::string variant = iter->second.Variants.at(std::rand() % iter->second.Variants.size());
 							if (variant != "") {
@@ -208,24 +215,24 @@ void mainFn(PPCInterpreter_t* hCPU) {
 							}
 							queueActor.Name = name;
 						}
-						else
-							queueActor.Name = keyCodeActor.Name;
 					}
 
+					largestAcceptedNameLength = 0;
 					for (std::map<std::string, ActorData::Weapon>::iterator iter = ActorData::WeaponClasses.begin(); iter != ActorData::WeaponClasses.end(); ++iter) {
 						if (keyCodeActor.Name.find(iter->first, 0) == 0) {
+
+							if (iter->first.length() < largestAcceptedNameLength) // Some optimizations
+								continue;
+							largestAcceptedNameLength = iter->first.length();
+
 							std::string name = iter->first;
 							name.append("_");
 							name.append(iter->second.Variants.at(std::rand() % iter->second.Variants.size()));
 
 							queueActor.Name = name;
 						}
-						else
-							queueActor.Name = keyCodeActor.Name;
 					}
 				}
-				else
-					queueActor.Name = keyCodeActor.Name;
 
 				queueActor.PosX = (float)*memInstance->linkData.PosX;
 				queueActor.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
