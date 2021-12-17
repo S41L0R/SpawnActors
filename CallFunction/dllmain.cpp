@@ -170,10 +170,6 @@ void mainFn(PPCInterpreter_t* hCPU) {
 		bool keyPressed = false;
 		if (GetKeyState(key) & 0x8000)
 			keyPressed = true;
-<<<<<<< HEAD
-
-=======
->>>>>>> 5bf0a0e76dd7fea1ff7d26bdc8a27fe3bf398b48
 
 		if (keyPressed && !prevKeyStateMap.find(keyCodeMapIter->first)->second) { // Make sure the key is pressed this frame and wasn't last frame
 			for (std::string name : keyCodeMapIter->second) {
@@ -186,7 +182,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 				queuedActors.push_back(queueActor);
 			}
 		}
-	    
+
 
 		// Actual actor spawning - just read from queue here.
 		if (queuedActors.size() >= 1) {
@@ -223,14 +219,14 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (7 * 4)], &null, sizeof(int)); // idk what this is
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (3 * 4)], &null, sizeof(int)); // or this, either
 
-			
+
 
 			// Not sure what these are, but they helps with traverseDist issues
 			int traverseDistFixer = 0x043B0000;
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (2 * 4)], &traverseDistFixer, sizeof(int));
 			int traverseDistFixer2 = 0x00000016;
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (1 * 4)], &traverseDistFixer2, sizeof(int));
-			
+
 
 			// Oh, and the HashId as well
 			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (14 * 4)], &null, sizeof(int));

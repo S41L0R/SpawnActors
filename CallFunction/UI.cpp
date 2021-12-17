@@ -30,9 +30,15 @@ static void glfw_error_callback(int error, const char* description)
 /// This is the actual ImGui drawing code
 /// </summary>
 void DrawItems() {
+    char  keycode[128] = "";
+    static int currentActor = 0;
+    const char* actors[] = {"Enemy_Guardian_A", "Enemy_Guardian_B", "Enemy_Guardian_C"};
     ImGui::Begin("Test Window");
     ImGui::Text("Actor-Keycode Mapping");
-    //ImGui::InputText("Keycode", );
+    ImGui::InputTextWithHint("Keycode", "Keycode", keycode, IM_ARRAYSIZE(keycode));
+    ImGui::Combo("Actors", &currentActor, actors, IM_ARRAYSIZE(actors));
+    ImGui::Text(keycode);
+    ImGui::Text(actors[currentActor]);
     ImGui::End();
 
     ImGui::ShowDemoWindow();
