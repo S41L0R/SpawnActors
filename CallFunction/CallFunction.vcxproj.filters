@@ -22,6 +22,9 @@
     <Filter Include="Source Files\Threads">
       <UniqueIdentifier>{0ff51ea8-0966-4fb7-82d0-98c7da1e9e26}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Data Files">
+      <UniqueIdentifier>{a4d2910e-72f6-49a9-9c55-5b046c313376}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
@@ -62,6 +65,9 @@
     </ClInclude>
     <ClInclude Include="UI.h">
       <Filter>Source Files\Threads</Filter>
+    </ClInclude>
+    <ClInclude Include="ActorData.h">
+      <Filter>Data Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

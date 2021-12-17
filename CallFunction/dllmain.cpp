@@ -6,6 +6,7 @@
 
 #include "util/BotwEdit.h"
 #include "UI.h"
+#include "ActorData.h"
 
 #include "Windows.h"
 
@@ -63,9 +64,8 @@ typedef void (*osLib_registerHLEFunctionType)(const char* libraryName, const cha
 
 #pragma pack(1)
 struct Data { // This is reversed compared to the gfx pack because we read as big endian.
-	char name[64]; // (Not long enough for all actor names...)
+	char name[152]; // We'll allocate all unused storage for use for name storage.. just in case of a really long actor name
 	uint8_t actorStorage[104];
-	uint8_t storage[88]; // This is just the remainder of storage that isn't repurposed and named
 
 	int f_r10;
 	int f_r9;
@@ -100,6 +100,19 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 	int enabled;
 };
 
+struct KeyCodeActor {
+	KeyCodeActor(std::string name) {
+		Name = name;
+	}
+	KeyCodeActor(std::string name, bool randomized) {
+		Name = name;
+		Randomized = randomized;
+	}
+
+	std::string Name;
+	bool Randomized = false;
+};
+
 struct QueueActor {
 	float PosX;
 	float PosY;
@@ -112,7 +125,7 @@ struct QueueActor {
 // - Feel free to expand / change -
 // Note: This does not take into account stuff like actually setting desired params.
 // ---------------------------------------------------------------------------------
-std::map<char, std::vector<std::string>> keyCodeMap;
+std::map<char, std::vector<KeyCodeActor>> keyCodeMap;
 
 std::shared_mutex mutex; // Make this thread-safe.
 
@@ -129,14 +142,19 @@ void mainFn(PPCInterpreter_t* hCPU) {
 	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
 
 	if (!setup) {
-		uint32_t linkPosOffset;
-		memInstance->memory_readMemoryBE(0x11344418, &linkPosOffset); // Some random reference to link's position that seems to work...
+		uint32_t linkPosOffset = 0x113444F0;
 		memInstance->linkData.PosX = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x50); // oh wait,
 		memInstance->linkData.PosY = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x54); // it's
 		memInstance->linkData.PosZ = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x58); // inconsistent
 
-		if (*memInstance->linkData.PosX == 0.f && *memInstance->linkData.PosY == 0.f && *memInstance->linkData.PosZ == 0.f)
-			Console::LogPrint("Try again! 0 0 0 Glitch.");
+		// Realistically, no one's gonna be at *exactly* 0 0 0
+		if (*memInstance->linkData.PosX == 0.f && *memInstance->linkData.PosY == 0.f && *memInstance->linkData.PosZ == 0.f) {
+			Console::LogPrint("Whelp... 0 0 0 Glitch. Restart cemu and try again!");
+			Console::LogPrint("I really need to figure out why this happens...");
+			Console::LogPrint("I could do what LibreVR's Memory Editor does, which is an AOB scan, but the problems I have with that are:");
+			Console::LogPrint("  A. It's really slow");
+			Console::LogPrint("  B. It requires some complicated region finding");
+		}
 
 		uint32_t startData = hCPU->gpr[3];
 		Data data;
@@ -164,7 +182,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 
 	// Basic key press logic to make sure holding down doesn't spam triggers
 	mutex.lock();
-	for (std::map<char, std::vector<std::string>>::iterator keyCodeMapIter = keyCodeMap.begin(); keyCodeMapIter != keyCodeMap.end(); ++keyCodeMapIter) {
+	for (std::map<char, std::vector<KeyCodeActor>>::iterator keyCodeMapIter = keyCodeMap.begin(); keyCodeMapIter != keyCodeMap.end(); ++keyCodeMapIter) {
 		char key = keyCodeMapIter->first;
 
 		bool keyPressed = false;
@@ -172,11 +190,45 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			keyPressed = true;
 
 		if (keyPressed && !prevKeyStateMap.find(keyCodeMapIter->first)->second) { // Make sure the key is pressed this frame and wasn't last frame
-			for (std::string name : keyCodeMapIter->second) {
+			for (KeyCodeActor keyCodeActor : keyCodeMapIter->second) {
 				QueueActor queueActor;
-				queueActor.Name = name;
+				// Set name
+				if (keyCodeActor.Randomized) {
+					for (std::map<std::string, ActorData::Enemy>::iterator iter = ActorData::EnemyClasses.begin(); iter != ActorData::EnemyClasses.end(); ++iter) {
+						if (keyCodeActor.Name.find(iter->first, 0) == 0) {
+							std::string name = iter->first;
+							std::string variant = iter->second.Variants.at(std::rand() % iter->second.Variants.size());
+							if variant != ""{
+								name.append("_");
+								name.append(variant);
+							}
+
+							while (int i <= iter->second.MaxWeaponSlots){
+
+							}
+							queueActor.Name = name;
+						}
+						else
+							queueActor.Name = keyCodeActor.Name;
+					}
+
+					for (std::map<std::string, ActorData::Weapon>::iterator iter = ActorData::WeaponClasses.begin(); iter != ActorData::WeaponClasses.end(); ++iter) {
+						if (keyCodeActor.Name.find(iter->first, 0) == 0) {
+							std::string name = iter->first;
+							name.append("_");
+							name.append(iter->second.Variants.at(std::rand() % iter->second.Variants.size()));
+
+							queueActor.Name = name;
+						}
+						else
+							queueActor.Name = keyCodeActor.Name;
+					}
+				}
+				else
+					queueActor.Name = keyCodeActor.Name;
+
 				queueActor.PosX = (float)*memInstance->linkData.PosX;
-				queueActor.PosY = (float)*memInstance->linkData.PosY;
+				queueActor.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
 				queueActor.PosZ = (float)*memInstance->linkData.PosZ;
 
 				queuedActors.push_back(queueActor);
@@ -328,10 +380,14 @@ DWORD WINAPI ConsoleThread(LPVOID param) {
 		else if (command[0] == "keycode") {
 			mutex.lock();
 			if (command.size() >= 3) {
-				std::vector<std::string> actVec;
+				std::vector<KeyCodeActor> actVec;
 				int actorCount = command.size() - 2;
 				for (int i = 0; i < actorCount; i++) {
-					actVec.push_back(command[i + 2]);
+					bool randomized = (command[i + 2][0] == '\\');
+					if (randomized)
+						command[i + 2].erase(0, 1);
+
+					actVec.push_back(KeyCodeActor(command[i + 2], randomized));
 				}
 				if (keyCodeMap.find(command[1][0]) != keyCodeMap.end()) // Remove last version if it exists
 					keyCodeMap.erase(keyCodeMap.find(command[1][0]));
@@ -385,6 +441,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 
 		// This one is important - sets stuff up so that we can be called by the asm patch
         init();
+
+		// And set up ActorData
+		ActorData::InitDefaultValues();
 
 		// Set up our console thread
 		CreateThread(0, 0, ConsoleThread, hModule, 0, 0); // This isn't migrated to Threads because it's temporary
