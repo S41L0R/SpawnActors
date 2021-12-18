@@ -33,8 +33,7 @@ void DrawItems() {
     char  keycode[128] = "";
     static int currentActor = 0;
     const char* actors[] = {"Enemy_Guardian_A", "Enemy_Guardian_B", "Enemy_Guardian_C"};
-    ImGui::Begin("Test Window");
-    ImGui::Text("Actor-Keycode Mapping");
+    ImGui::Begin("Actor-Keycode Mapping");
     ImGui::InputTextWithHint("Keycode", "Keycode", keycode, IM_ARRAYSIZE(keycode));
     ImGui::Combo("Actors", &currentActor, actors, IM_ARRAYSIZE(actors));
     ImGui::Text(keycode);

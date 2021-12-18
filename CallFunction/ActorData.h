@@ -153,7 +153,7 @@ namespace ActorData {
 		{
 			std::vector<std::string> variants = {"038", "030"};
 			Weapon weapon;
-			weapon.Variants = variants;
+			weapon.Variants = std::vector<std::string>();
 			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_Shield", weapon));
 		}
 
