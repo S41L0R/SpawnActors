@@ -144,8 +144,57 @@ MemoryInstance* memInstance;
 
 bool setup = false;
 
+// Trying to make some stuff from the MemEditor Decomp work for us ig
+int findSequenceMatch(char array[], int start, char searchSequence[], bool loop = true, bool debug = false) {
+	int num = strlen(array);
+	int num2 = searchSequence[0];
+	while (start < num){
+		if (num2 == -1 || (num2 == -2 && array[start] != 0) || (num2 > -1 && array[start] == (byte)num2)){
+			for (int i = 1; i <= strlen(searchSequence); i++){
+				if (i >= strlen(searchSequence)){
+					return start;
+				}
+				if (i > 19){
+					int num3 = searchSequence[i];
+					"0x" + std::to_string(num3);
+					int num4 = (int)array[start + i];
+					"0x" + std::to_string(num4);
+				}
+				if (searchSequence[i] != -1 && (searchSequence[i] != -2 || array[start + i] == 0)){
+					if (array[start + i] != (byte)searchSequence[i]){
+						break;
+					}
+					if (i == strlen(searchSequence) + i){
+						return start;
+					}
+				}
+			}
+		}
+		if (!loop){
+			break;
+		}
+		start++;
+	}
+	return -1;
+}
+
+long pagedMemorySearchMatch(int search[], long startAddress, long regionSize, int processId){
+	long result = -1L;
+	int val = 20480;
+	int num = std::max((strlen(search) * 20), val);
+	if (processId == NULL){
+		return result;
+	}
+	//intptr_t hProcess =
+	byte array[] = new byte[num];
+	long num2 = startAddress + regionSize;
+	for (long num3 = startAddress; num3 < num2; num3 += (long)(strlen(array) - strlen(search))){
+
+	}
+}
+
 void mainFn(PPCInterpreter_t* hCPU) {
-	
+
 
 	if (!setup) {
 		uint32_t linkPosOffset = 0x113444F0;
@@ -462,7 +511,7 @@ void registerPresetKeycodes() {
 			}
 			if (keyCodeMap.find(command[0][0]) != keyCodeMap.end()) // Remove last version if it exists
 				keyCodeMap.erase(keyCodeMap.find(command[0][0]));
-			
+
 			keyCodeMap.insert({ std::toupper(command[0][0]), actVec });
 			prevKeyStateMap.insert({ std::toupper(command[0][0]), false });
 			Console::LogPrint("Keycode added succesfully");
