@@ -178,6 +178,7 @@ int findSequenceMatch(char array[], int start, char searchSequence[], bool loop 
 	return -1;
 }
 
+/*
 long pagedMemorySearchMatch(int search[], long startAddress, long regionSize, int processId){
 	long result = -1L;
 	int val = 20480;
@@ -192,9 +193,11 @@ long pagedMemorySearchMatch(int search[], long startAddress, long regionSize, in
 
 	}
 }
-
+*/
 void mainFn(PPCInterpreter_t* hCPU) {
-
+	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
+	
+	mutex.lock();
 
 	if (!setup) {
 		uint32_t linkPosOffset = 0x113444F0;
@@ -218,19 +221,19 @@ void mainFn(PPCInterpreter_t* hCPU) {
 		memInstance->memory_writeMemoryBE(startData, data);
 
 		setup = true;
+		mutex.unlock();
 		return;
 	}
-
+	
 	uint32_t startData = hCPU->gpr[3];
 	Data data;
-	int size = sizeof(data);
+	
 	memInstance->memory_readMemoryBE(startData, &data);
-
+	
 	data.interceptRegisters = true; // Just make sure to intercept stuff.. if we don't do this all the time when you warp somewhere else spawns cause it to crash
 
 
 	// Basic key press logic to make sure holding down doesn't spam triggers
-	mutex.lock();
 	for (std::map<char, std::vector<KeyCodeActor>>::iterator keyCodeMapIter = keyCodeMap.begin(); keyCodeMapIter != keyCodeMap.end(); ++keyCodeMapIter) {
 		char key = keyCodeMapIter->first;
 
@@ -390,11 +393,9 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			itr->second = keyPressed; // Key press logic
 		}
 	}
-	mutex.unlock();
-
+	
 	memInstance->memory_writeMemoryBE(startData, data);
-
-	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
+	mutex.unlock();
 }
 
 
@@ -551,7 +552,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		// Set up our console thread
 		CreateThread(0, 0, ConsoleThread, hModule, 0, 0); // This isn't migrated to Threads because it's temporary
 
-		CreateThread(0, 0, Threads::UIThread, hModule, 0, 0);
+		//CreateThread(0, 0, Threads::UIThread, hModule, 0, 0);
 		break;
     case DLL_THREAD_ATTACH:
 		break;

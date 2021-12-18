@@ -294,7 +294,6 @@ cmpwi r3, 0x0
 
 
 ; Branch to the next instruction after this is called..
-; This function only gets called from one location so this is fine.
 b 0x0313b844
 
 
