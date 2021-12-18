@@ -210,7 +210,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 								name.append(variant);
 							}
 
-							for (int i = 0; i <= iter->second.MaxWeaponSlots; i++) {
+							//for (int i = 0; i <= iter->second.MaxWeaponSlots; i++) {
 
 							//}
 							queueActor.Name = name;
