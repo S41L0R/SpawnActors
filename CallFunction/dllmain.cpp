@@ -1,7 +1,7 @@
 // dllmain.cpp : Defines the entry point for the DLL application.
-#include <sstream>
 #include <map>
 #include <iostream>
+#include <fstream>
 #include <shared_mutex>
 
 #include "util/BotwEdit.h"
@@ -357,7 +357,6 @@ void init() {
 /// Manages getting console input - TEMPORARY while UI is still being developed
 /// </summary>
 DWORD WINAPI ConsoleThread(LPVOID param) {
-	Console::ConsoleInit("SpawnActors Console");
 	while (true) {
 		std::string line = Console::ReadLine();
 		if (line.size() == 0)
@@ -430,6 +429,47 @@ DWORD WINAPI ConsoleThread(LPVOID param) {
 	return 0;
 }
 
+void registerPresetKeycodes() {
+	std::ifstream txtFile;
+	txtFile.open("keycodes.txt");
+
+	std::string line;
+	while (std::getline(txtFile, line)) {
+
+		// Get our command vector
+		std::vector<std::string> command;
+		{
+			std::istringstream ss(line);
+			std::string word;
+
+			while (ss >> word)
+			{
+				command.push_back(word);
+			}
+		}
+
+		// Actually set the keycode!
+		mutex.lock();
+		if (command.size() >= 2) {
+			std::vector<KeyCodeActor> actVec;
+			int actorCount = command.size() - 1;
+			for (int i = 0; i < actorCount; i++) {
+				bool randomized = (command[i + 1][0] == '\\');
+				if (randomized)
+					command[i + 1].erase(0, 1);
+				actVec.push_back(KeyCodeActor(command[i + 1], randomized));
+			}
+			if (keyCodeMap.find(command[0][0]) != keyCodeMap.end()) // Remove last version if it exists
+				keyCodeMap.erase(keyCodeMap.find(command[0][0]));
+			Console::LogPrint(command[0]);
+			keyCodeMap.insert({ std::toupper(command[0][0]), actVec });
+			prevKeyStateMap.insert({ std::toupper(command[0][0]), false });
+			Console::LogPrint("Keycode added succesfully");
+		}
+		mutex.unlock();
+	}
+}
+
 
 // Main DLL entrypoint
 // -------------------
@@ -447,11 +487,16 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		// Not required, but good to have nonetheless.
 		memInstance = new MemoryInstance(GetModuleHandleA(NULL));
 
+		Console::ConsoleInit("SpawnActors Console"); // Set up our console
+
 		// This one is important - sets stuff up so that we can be called by the asm patch
         init();
 
 		// And set up ActorData
 		ActorData::InitDefaultValues();
+
+		// Set up keycodes set by file
+		registerPresetKeycodes();
 
 		// Set up our console thread
 		CreateThread(0, 0, ConsoleThread, hModule, 0, 0); // This isn't migrated to Threads because it's temporary

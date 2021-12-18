@@ -178,7 +178,7 @@ stw r3, O_LR@l(r14) ; LR too
 
 lis r14, O_CTR@ha
 mfctr r3
-stw r3, O_CTR@l
+stw r3, O_CTR@l(r14)
 
 ; Our custom stuff
 ; -----------------------------------
