@@ -76,6 +76,8 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 	int f_r4;
 	int f_r3;
 
+	int fo_r0;
+
 	int n_r10;
 	int n_r9;
 	int n_r8;
@@ -97,8 +99,11 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 	int o_r3;
 
 	int fnAddr;
-	int interceptRegisters;
-	int enabled;
+
+	byte padding_0[2];
+	bool interceptRegisters;
+
+	bool enabled;
 };
 
 struct KeyCodeActor {
@@ -140,7 +145,7 @@ MemoryInstance* memInstance;
 bool setup = false;
 
 void mainFn(PPCInterpreter_t* hCPU) {
-	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
+	
 
 	if (!setup) {
 		uint32_t linkPosOffset = 0x113444F0;
@@ -169,16 +174,10 @@ void mainFn(PPCInterpreter_t* hCPU) {
 
 	uint32_t startData = hCPU->gpr[3];
 	Data data;
+	int size = sizeof(data);
 	memInstance->memory_readMemoryBE(startData, &data);
 
-	//data.interceptRegisters = true; // Just make sure to intercept stuff..
-
-	int hashId = 0;
-	memInstance->memory_readMemoryBE(data.f_r6 + (6 * 4), &hashId);
-	int thing;
-	if (hashId == -833019966) {
-		int thing = 5; // Debug code, but maybe at one point have it only grab the hashId of a specific actor to resolve inconsistencies..
-	}
+	data.interceptRegisters = true; // Just make sure to intercept stuff.. if we don't do this all the time when you warp somewhere else spawns cause it to crash
 
 
 	// Basic key press logic to make sure holding down doesn't spam triggers
@@ -345,6 +344,8 @@ void mainFn(PPCInterpreter_t* hCPU) {
 	mutex.unlock();
 
 	memInstance->memory_writeMemoryBE(startData, data);
+
+	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
 }
 
 
@@ -461,7 +462,7 @@ void registerPresetKeycodes() {
 			}
 			if (keyCodeMap.find(command[0][0]) != keyCodeMap.end()) // Remove last version if it exists
 				keyCodeMap.erase(keyCodeMap.find(command[0][0]));
-			Console::LogPrint(command[0]);
+			
 			keyCodeMap.insert({ std::toupper(command[0][0]), actVec });
 			prevKeyStateMap.insert({ std::toupper(command[0][0]), false });
 			Console::LogPrint("Keycode added succesfully");

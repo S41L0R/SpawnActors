@@ -7,10 +7,10 @@ startData: ; where our data starts
 
 ; Whether our function should be called
 Enabled: 
-.int 0
+.byte 0
 
 InterceptRegisters:
-.int 0
+.byte 0
 
 FunctionToJump:
 .int 0
@@ -53,6 +53,9 @@ N_R8:
 N_R9:
 .int 0
 N_R10:
+.int 0
+
+FO_R0: ; Just some back up
 .int 0
 
 F_R3:
@@ -191,7 +194,11 @@ bla import.coreinit.fnCallMain
 
 
 
-
+; Set up if statment
+lis r14, Enabled@ha
+lbz r3, Enabled@l(r14)
+cmpwi r3, 0x0
+beq restoreAndExit ; We can skip over applying params if we're not calling the func, so putting this here is fine.
 
 ; Set up where to jump to...
 lis r3, FunctionToJump@ha
@@ -204,16 +211,10 @@ addi r3, r3, restoreAndExit@l
 mtlr r3
 
 
-; Set up if statment
-lis r14, Enabled@ha
-lwz r3, Enabled@l(r14)
-cmpwi r3, 0x0
-beq restoreAndExit ; We can skip over applying params if we're not calling the func, so putting this here is fine.
-
 ; Set stuff to false so we don't infinitly call this
 li r3, 0x0
 lis r14, Enabled@ha
-stw r3, Enabled@l(r14)
+stb r3, Enabled@l(r14)
 
 ;; Apply our params
 lis r14, N_R3@ha
@@ -310,9 +311,12 @@ b 0x0313ea78
 
 GetTargetFnRegisters:
 
+lis r14, FO_R0@ha ; Back up r0
+stw r0, FO_R0@l(r14)
+
 ; Set up if statment
 lis r14, InterceptRegisters@ha
-lwz r0, InterceptRegisters@l(r14)
+lbz r0, InterceptRegisters@l(r14)
 cmpwi r0, 0x0
 beq InterceptRestoreAndExit ; We can skip over applying params if we're not calling the func, so putting this here is fine.
 
@@ -342,9 +346,14 @@ stw r10, F_R10@l(r14)
 
 li r0, 0x0
 lis r14, InterceptRegisters@ha
-stw r0, InterceptRegisters@l(r14)
+stb r0, InterceptRegisters@l(r14)
 
 InterceptRestoreAndExit:
+
+li r14, 0x0 ; Tends to always be 0 anyway, might as well back that up
+
+lis r14, FO_R0@ha ; Restore r0
+lwz r0, FO_R0@l(r14)
 
 ; original instruction:
 stwu r1, -0x38(r1)
