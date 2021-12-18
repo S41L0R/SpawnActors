@@ -290,17 +290,17 @@ li r14, 0x0
 
 
 ; Do what we were replacing
-lwz r3, 0x30(r3)
+cmpwi r3, 0x0
 
 
 ; Branch to the next instruction after this is called..
 ; This function only gets called from one location so this is fine.
-b 0x0313ea78 
+b 0x0313b844
 
 
 
 
-0x0313ea74 = b CallFunction ; Send stuff over to our custom function
+0x0313b840 = b CallFunction ; Send stuff over to our custom function
 
 
 
