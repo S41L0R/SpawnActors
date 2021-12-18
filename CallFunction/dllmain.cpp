@@ -85,6 +85,7 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 	int n_r4;
 	int n_r3;
 
+	int o_ctr;
 	int o_lr;
 	int o_r10;
 	int o_r9;
@@ -170,7 +171,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 	Data data;
 	memInstance->memory_readMemoryBE(startData, &data);
 
-	data.interceptRegisters = true; // Just make sure to intercept stuff..
+	//data.interceptRegisters = true; // Just make sure to intercept stuff..
 
 	int hashId = 0;
 	memInstance->memory_readMemoryBE(data.f_r6 + (6 * 4), &hashId);

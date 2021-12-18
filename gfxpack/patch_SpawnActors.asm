@@ -34,6 +34,8 @@ O_R10:
 .int 0
 O_LR: ; ...Including the LR register
 .int 0
+O_CTR: ; ...And the CTR Register
+.int 0
 
 ; All of our registers to overwrite with
 N_R3:
@@ -174,6 +176,10 @@ lis r14, O_LR@ha
 mflr r3 ; whatever, we've already backed up r3 so it's usable
 stw r3, O_LR@l(r14) ; LR too
 
+lis r14, O_CTR@ha
+mfctr r3
+stw r3, O_CTR@l
+
 ; Our custom stuff
 ; -----------------------------------
 
@@ -245,6 +251,10 @@ restoreAndExit:
 ; -----------------------------------
 
 ; Restore registers
+
+lis r14, O_CTR@ha
+lwz r3, O_CTR@l(r14)
+mtctr r3
 
 lis r14, O_LR@ha
 lwz r3, O_LR@l(r14) ; Restore LR as well
