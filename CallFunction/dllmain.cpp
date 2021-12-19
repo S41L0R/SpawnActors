@@ -97,12 +97,14 @@ struct KeyCodeActor {
 	KeyCodeActor(std::string name) {
 		Name = name;
 	}
-	KeyCodeActor(std::string name, bool randomized) {
+	KeyCodeActor(std::string name, int num, bool randomized) {
 		Name = name;
+		Num = num;
 		Randomized = randomized;
 	}
 
 	std::string Name;
+	int Num = 1;
 	bool Randomized = false;
 };
 
@@ -286,7 +288,8 @@ void mainFn(PPCInterpreter_t* hCPU) {
 				queueActor.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
 				queueActor.PosZ = (float)*memInstance->linkData.PosZ;
 
-				queuedActors.push_back(queueActor);
+				for (int i = 0; i < keyCodeActor.Num; i ++)
+					queuedActors.push_back(queueActor);
 			}
 		}
 
@@ -401,6 +404,55 @@ void init() {
 	osLib_registerHLEFunction("coreinit", "logFn", &logFn); // And basic logging tools
 }
 
+void registerPresetKeycodes() {
+	std::ifstream txtFile;
+	txtFile.open("keycodes.txt");
+
+	std::string line;
+	while (std::getline(txtFile, line)) {
+
+		// Get our command vector
+		std::vector<std::string> command;
+		{
+			std::istringstream ss(line);
+			std::string word;
+
+			while (ss >> word)
+			{
+				command.push_back(word);
+			}
+		}
+
+		// Actually set the keycode!
+		mutex.lock();
+		if (command.size() >= 3) {
+			char keycode = std::toupper(command[0][0]);
+
+
+			std::vector<KeyCodeActor> actVec;
+			int actorCount = (command.size() - 1) / 2;
+
+			for (int i = 0; i < command.size() - 1; i += 2) {
+				int num = std::stoi(command[i + 1]);
+
+				bool randomized = (command[i + 2][0] == '\\');
+				if (randomized)
+					command[i + 2].erase(0, 1);
+
+				actVec.push_back(KeyCodeActor(command[i + 2], num, randomized));
+			}
+
+			if (keyCodeMap.find(keycode) != keyCodeMap.end()) // Remove last version if it exists
+				keyCodeMap.erase(keyCodeMap.find(keycode));
+
+			keyCodeMap.insert({ keycode, actVec });
+			prevKeyStateMap.insert({ keycode, false });
+			Console::LogPrint("Keycode added succesfully");
+		}
+		mutex.unlock();
+	}
+}
+
 /// <summary>
 /// Manages getting console input - TEMPORARY while UI is still being developed
 /// </summary>
@@ -427,25 +479,31 @@ DWORD WINAPI ConsoleThread(LPVOID param) {
 			Console::LogPrint(
 				"Commands:\n"
 				"'help' - Shows commands\n"
-				"'keycode [key] [actorname(s)]' - Registers keycode for actor spawning\n"
+				"'keycode [key] [ [num] [actorname] ](s)' - Registers keycode for actor spawning\n"
 				"'rmkeycode [key]' - Unregisters keycode for actor spawning\n"
 				"'pos' - Print link's pos"
 			);
 		}
 		else if (command[0] == "keycode") {
 			mutex.lock();
-			if (command.size() >= 3) {
-				std::vector<KeyCodeActor> actVec;
-				int actorCount = command.size() - 2;
-				for (int i = 0; i < actorCount; i++) {
-					bool randomized = (command[i + 2][0] == '\\');
-					if (randomized)
-						command[i + 2].erase(0, 1);
+			if (command.size() >= 4) {
+				char keycode = std::toupper(command[1][0]);
 
-					actVec.push_back(KeyCodeActor(command[i + 2], randomized));
+
+				std::vector<KeyCodeActor> actVec;
+				int actorCount = (command.size() - 2) / 2;
+
+				for (int i = 0; i < command.size() - 2; i += 2) {
+					int num = std::stoi(command[i + 2]);
+
+					bool randomized = (command[i + 3][0] == '\\');
+					if (randomized)
+						command[i + 3].erase(0, 1);
+
+					actVec.push_back(KeyCodeActor(command[i + 3], num, randomized));
 				}
 
-				char keycode = std::toupper(command[1][0]);
+
 				if (keyCodeMap.find(keycode) != keyCodeMap.end()) // Remove last version if it exists
 					keyCodeMap.erase(keyCodeMap.find(keycode));
 
@@ -470,6 +528,8 @@ DWORD WINAPI ConsoleThread(LPVOID param) {
 			}
 			mutex.unlock();
 		}
+		else if (command[0] == "reloadconfig")
+			registerPresetKeycodes();
 		else if (command[0] == "pos" && init) {
 			Console::LogPrint(*memInstance->linkData.PosX);
 			Console::LogPrint(*memInstance->linkData.PosY);
@@ -477,49 +537,6 @@ DWORD WINAPI ConsoleThread(LPVOID param) {
 		}
 	}
 	return 0;
-}
-
-void registerPresetKeycodes() {
-	std::ifstream txtFile;
-	txtFile.open("keycodes.txt");
-
-	std::string line;
-	while (std::getline(txtFile, line)) {
-
-		// Get our command vector
-		std::vector<std::string> command;
-		{
-			std::istringstream ss(line);
-			std::string word;
-
-			while (ss >> word)
-			{
-				command.push_back(word);
-			}
-		}
-
-		// Actually set the keycode!
-		mutex.lock();
-		if (command.size() >= 2) {
-			std::vector<KeyCodeActor> actVec;
-			int actorCount = command.size() - 1;
-			for (int i = 0; i < actorCount; i++) {
-				bool randomized = (command[i + 1][0] == '\\');
-				if (randomized)
-					command[i + 1].erase(0, 1);
-				actVec.push_back(KeyCodeActor(command[i + 1], randomized));
-			}
-
-			char keycode = std::toupper(command[0][0]);
-			if (keyCodeMap.find(keycode) != keyCodeMap.end()) // Remove last version if it exists
-				keyCodeMap.erase(keyCodeMap.find(keycode));
-
-			keyCodeMap.insert({ keycode, actVec });
-			prevKeyStateMap.insert({ keycode, false });
-			Console::LogPrint("Keycode added succesfully");
-		}
-		mutex.unlock();
-	}
 }
 
 
