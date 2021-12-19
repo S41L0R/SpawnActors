@@ -547,7 +547,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		registerPresetKeycodes();
 
 		// Set up our console thread
-		//CreateThread(0, 0, ConsoleThread, hModule, 0, 0); // This isn't migrated to Threads because it's temporary
+		CreateThread(0, 0, ConsoleThread, hModule, 0, 0); // This isn't migrated to Threads because it's temporary
 
 		//CreateThread(0, 0, Threads::UIThread, hModule, 0, 0);
 		break;
