@@ -444,11 +444,13 @@ DWORD WINAPI ConsoleThread(LPVOID param) {
 
 					actVec.push_back(KeyCodeActor(command[i + 2], randomized));
 				}
-				if (keyCodeMap.find(command[1][0]) != keyCodeMap.end()) // Remove last version if it exists
-					keyCodeMap.erase(keyCodeMap.find(command[1][0]));
 
-				keyCodeMap.insert({ std::toupper(command[1][0]), actVec });
-				prevKeyStateMap.insert({ std::toupper(command[1][0]), false });
+				char keycode = std::toupper(command[1][0]);
+				if (keyCodeMap.find(keycode) != keyCodeMap.end()) // Remove last version if it exists
+					keyCodeMap.erase(keyCodeMap.find(keycode));
+
+				keyCodeMap.insert({ keycode, actVec });
+				prevKeyStateMap.insert({ keycode, false });
 				Console::LogPrint("Keycode added succesfully");
 			}
 			else {
@@ -507,11 +509,13 @@ void registerPresetKeycodes() {
 					command[i + 1].erase(0, 1);
 				actVec.push_back(KeyCodeActor(command[i + 1], randomized));
 			}
-			if (keyCodeMap.find(command[0][0]) != keyCodeMap.end()) // Remove last version if it exists
-				keyCodeMap.erase(keyCodeMap.find(command[0][0]));
 
-			keyCodeMap.insert({ std::toupper(command[0][0]), actVec });
-			prevKeyStateMap.insert({ std::toupper(command[0][0]), false });
+			char keycode = std::toupper(command[0][0]);
+			if (keyCodeMap.find(keycode) != keyCodeMap.end()) // Remove last version if it exists
+				keyCodeMap.erase(keyCodeMap.find(keycode));
+
+			keyCodeMap.insert({ keycode, actVec });
+			prevKeyStateMap.insert({ keycode, false });
 			Console::LogPrint("Keycode added succesfully");
 		}
 		mutex.unlock();
