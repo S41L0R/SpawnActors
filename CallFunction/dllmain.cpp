@@ -76,8 +76,6 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 	int f_r4;
 	int f_r3;
 
-	int fo_r0;
-
 	int n_r10;
 	int n_r9;
 	int n_r8;
@@ -87,20 +85,9 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 	int n_r4;
 	int n_r3;
 
-	int o_ctr;
-	int o_lr;
-	int o_r10;
-	int o_r9;
-	int o_r8;
-	int o_r7;
-	int o_r6;
-	int o_r5;
-	int o_r4;
-	int o_r3;
-
 	int fnAddr;
 
-	byte padding_0[2];
+	byte bytepadding[2];
 	bool interceptRegisters;
 
 	bool enabled;
@@ -194,6 +181,15 @@ long pagedMemorySearchMatch(int search[], long startAddress, long regionSize, in
 	}
 }
 */
+
+void logFn(PPCInterpreter_t* hCPU) {
+	hCPU->instructionPointer = hCPU->sprNew.LR;
+
+	Console::LogPrint((char*)(memInstance->baseAddr + hCPU->gpr[3]));
+}
+
+
+
 void mainFn(PPCInterpreter_t* hCPU) {
 	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
 	
@@ -402,6 +398,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 void init() {
     osLib_registerHLEFunctionType osLib_registerHLEFunction = (osLib_registerHLEFunctionType)GetProcAddress(GetModuleHandleA("Cemu.exe"), "osLib_registerHLEFunction");
 	osLib_registerHLEFunction("coreinit", "fnCallMain", &mainFn); // Give our assembly patch something to hook into
+	osLib_registerHLEFunction("coreinit", "logFn", &logFn); // And basic logging tools
 }
 
 /// <summary>
@@ -550,7 +547,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		registerPresetKeycodes();
 
 		// Set up our console thread
-		CreateThread(0, 0, ConsoleThread, hModule, 0, 0); // This isn't migrated to Threads because it's temporary
+		//CreateThread(0, 0, ConsoleThread, hModule, 0, 0); // This isn't migrated to Threads because it's temporary
 
 		//CreateThread(0, 0, Threads::UIThread, hModule, 0, 0);
 		break;

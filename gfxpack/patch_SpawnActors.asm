@@ -3,7 +3,7 @@ moduleMatches = 0x6267BFD0
 
 .origin = codecave
 
-startData: ; where our data starts
+startData: ; where our transferrable data starts
 
 ; Whether our function should be called
 Enabled: 
@@ -13,28 +13,6 @@ InterceptRegisters:
 .byte 0
 
 FunctionToJump:
-.int 0
-
-; All of our registers to back up
-O_R3:
-.int 0
-O_R4:
-.int 0
-O_R5:
-.int 0
-O_R6:
-.int 0
-O_R7:
-.int 0
-O_R8:
-.int 0
-O_R9:
-.int 0
-O_R10:
-.int 0
-O_LR: ; ...Including the LR register
-.int 0
-O_CTR: ; ...And the CTR Register
 .int 0
 
 ; All of our registers to overwrite with
@@ -53,9 +31,6 @@ N_R8:
 N_R9:
 .int 0
 N_R10:
-.int 0
-
-FO_R0: ; Just some back up
 .int 0
 
 F_R3:
@@ -151,54 +126,37 @@ CallFunction:
 ; but whatever.
 
 ; Backup registers
-lis r14, O_R3@ha
-stw r3, O_R3@l(r14)
+addi r1, r1, -0x28
 
-lis r14, O_R4@ha
-stw r4, O_R4@l(r14)
-
-lis r14, O_R5@ha
-stw r5, O_R5@l(r14)
-
-lis r14, O_R6@ha
-stw r6, O_R6@l(r14)
-
-lis r14, O_R7@ha
-stw r7, O_R7@l(r14)
-
-lis r14, O_R8@ha
-stw r8, O_R8@l(r14)
-
-lis r14, O_R9@ha
-stw r9, O_R9@l(r14)
-
-lis r14, O_R10@ha
-stw r10, O_R10@l(r14)
-
-lis r14, O_LR@ha
+stw r3, 0(r1)
+stw r4, 4(r1)
+stw r5, 8(r1)
+stw r6, 12(r1)
+stw r7, 16(r1)
+stw r8, 20(r1)
+stw r9, 24(r1)
+stw r10, 28(r1)
 mflr r3 ; whatever, we've already backed up r3 so it's usable
-stw r3, O_LR@l(r14) ; LR too
-
-lis r14, O_CTR@ha
+stw r3, 32(r1)
 mfctr r3
-stw r3, O_CTR@l(r14)
+stw r3, 36(r1)
 
 ; Our custom stuff
 ; -----------------------------------
-
 ; Lets call the function from the dll
 ; so that we can get stuff to call with.
+
 lis r3, startData@ha
 addi r3, r3, startData@l
 bla import.coreinit.fnCallMain
-
-
 
 ; Set up if statment
 lis r14, Enabled@ha
 lbz r3, Enabled@l(r14)
 cmpwi r3, 0x0
 beq restoreAndExit ; We can skip over applying params if we're not calling the func, so putting this here is fine.
+
+
 
 ; Set up where to jump to...
 lis r3, FunctionToJump@ha
@@ -216,7 +174,7 @@ li r3, 0x0
 lis r14, Enabled@ha
 stb r3, Enabled@l(r14)
 
-;; Apply our params
+; Apply our params
 lis r14, N_R3@ha
 lwz r3, N_R3@l(r14)
 
@@ -241,51 +199,32 @@ lwz r9, N_R9@l(r14)
 lis r14, N_R10@ha
 lwz r10, N_R10@l(r14)
 
-
 ; Call the function
 bctr
 
 restoreAndExit:
-
-
-
 ; -----------------------------------
 
 ; Restore registers
 
-lis r14, O_CTR@ha
-lwz r3, O_CTR@l(r14)
+; We use r3 for this, so let's do it before we restore r3!
+lwz r3, 36(r1)
 mtctr r3
 
-lis r14, O_LR@ha
-lwz r3, O_LR@l(r14) ; Restore LR as well
+lwz r3, 32(r1)
 mtlr r3
 
-lis r14, O_R3@ha
-lwz r3, O_R3@l(r14)
+; Start GPR restore
+lwz r3, 0(r1)
+lwz r4, 4(r1)
+lwz r5, 8(r1)
+lwz r6, 12(r1)
+lwz r7, 16(r1)
+lwz r8, 20(r1)
+lwz r9, 24(r1)
+lwz r10, 28(r1)
 
-lis r14, O_R4@ha
-lwz r4, O_R4@l(r14)
-
-lis r14, O_R5@ha
-lwz r5, O_R5@l(r14)
-
-lis r14, O_R6@ha
-lwz r6, O_R6@l(r14)
-
-lis r14, O_R7@ha
-lwz r7, O_R7@l(r14)
-
-lis r14, O_R8@ha
-lwz r8, O_R8@l(r14)
-
-lis r14, O_R9@ha
-lwz r9, O_R9@l(r14)
-
-lis r14, O_R10@ha
-lwz r10, O_R10@l(r14)
-
-li r14, 0x0
+addi r1, r1, 0x28
 
 
 
@@ -310,8 +249,10 @@ b 0x0313b844
 
 GetTargetFnRegisters:
 
-lis r14, FO_R0@ha ; Back up r0
-stw r0, FO_R0@l(r14)
+; Back up registers we use
+addi r1, r1, -0x8; Give us some heap space to work with
+stw r0, 0(r1)
+stw r14, 4(r1)
 
 ; Set up if statment
 lis r14, InterceptRegisters@ha
@@ -349,10 +290,10 @@ stb r0, InterceptRegisters@l(r14)
 
 InterceptRestoreAndExit:
 
-li r14, 0x0 ; Tends to always be 0 anyway, might as well back that up
-
-lis r14, FO_R0@ha ; Restore r0
-lwz r0, FO_R0@l(r14)
+; Restore registers we used
+lwz r0, 0(r1)
+lwz r14, 4(r1)
+addi r1, r1, 0x8; Move the heap pointer back!
 
 ; original instruction:
 stwu r1, -0x38(r1)
