@@ -201,6 +201,7 @@ void setup(PPCInterpreter_t* hCPU, uint32_t startTrnsData) {
 		Console::LogPrint("I could do what LibreVR's Memory Editor does, which is an AOB scan, but the problems I have with that are:");
 		Console::LogPrint("  A. It's really slow");
 		Console::LogPrint("  B. It requires some complicated region finding");
+		Console::LogPrint("What we'll probably end up doing is hooking into the coord init instructions, but we need to find that first.");
 	}
 
 	TransferableData trnsData;
