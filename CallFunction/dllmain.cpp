@@ -118,7 +118,8 @@ struct QueueActor {
 // ---------------------------------------------------------------------------------
 std::map<char, std::vector<KeyCodeActor>> keyCodeMap;
 
-std::shared_mutex keycode_mutex; // Make keycodes thread-safe.
+std::shared_mutex keycode_mutex;
+std::shared_mutex queue_mutex;
 std::shared_mutex data_mutex;
 
 std::map<char, bool> prevKeyStateMap; // Used for key press logic - keeps track of previous key state
@@ -224,55 +225,58 @@ void queueActors() {
 
 		if (keyPressed && !prevKeyStateMap.find(keyCodeMapIter->first)->second) { // Make sure the key is pressed this frame and wasn't last frame
 			for (KeyCodeActor keyCodeActor : keyCodeMapIter->second) {
-				QueueActor queueActor;
-				// Set name
-				queueActor.Name = keyCodeActor.Name; // Default
-				if (keyCodeActor.Randomized) {
-					int largestAcceptedNameLength = 0;
-					for (std::map<std::string, ActorData::Enemy>::iterator iter = ActorData::EnemyClasses.begin(); iter != ActorData::EnemyClasses.end(); ++iter) {
-						if (keyCodeActor.Name.find(iter->first, 0) == 0) {
+				for (int i = 0; i < keyCodeActor.Num; i++) {
+					QueueActor queueActor;
+					// Set name
+					queueActor.Name = keyCodeActor.Name; // Default
+					if (keyCodeActor.Randomized) {
+						int largestAcceptedNameLength = 0;
+						for (std::map<std::string, ActorData::Enemy>::iterator iter = ActorData::EnemyClasses.begin(); iter != ActorData::EnemyClasses.end(); ++iter) {
+							if (keyCodeActor.Name.find(iter->first, 0) == 0) {
 
-							if (iter->first.length() < largestAcceptedNameLength) // Some optimizations
-								continue;
-							largestAcceptedNameLength = iter->first.length();
+								if (iter->first.length() < largestAcceptedNameLength) // Some optimizations
+									continue;
+								largestAcceptedNameLength = iter->first.length();
 
-							std::string name = iter->first;
-							std::string variant = iter->second.Variants.at(std::rand() % iter->second.Variants.size());
-							if (variant != "") {
-								name.append("_");
-								name.append(variant);
+								std::string name = iter->first;
+								std::string variant = iter->second.Variants.at(std::rand() % iter->second.Variants.size());
+								if (variant != "") {
+									name.append("_");
+									name.append(variant);
+								}
+
+								//for (int i = 0; i <= iter->second.MaxWeaponSlots; i++) {
+
+								//}
+								queueActor.Name = name;
 							}
+						}
 
-							//for (int i = 0; i <= iter->second.MaxWeaponSlots; i++) {
+						largestAcceptedNameLength = 0;
+						for (std::map<std::string, ActorData::Weapon>::iterator iter = ActorData::WeaponClasses.begin(); iter != ActorData::WeaponClasses.end(); ++iter) {
+							if (keyCodeActor.Name.find(iter->first, 0) == 0) {
 
-							//}
-							queueActor.Name = name;
+								if (iter->first.length() < largestAcceptedNameLength) // Some optimizations
+									continue;
+								largestAcceptedNameLength = iter->first.length();
+
+								std::string name = iter->first;
+								name.append("_");
+								name.append(iter->second.Variants.at(std::rand() % iter->second.Variants.size()));
+
+								queueActor.Name = name;
+							}
 						}
 					}
 
-					largestAcceptedNameLength = 0;
-					for (std::map<std::string, ActorData::Weapon>::iterator iter = ActorData::WeaponClasses.begin(); iter != ActorData::WeaponClasses.end(); ++iter) {
-						if (keyCodeActor.Name.find(iter->first, 0) == 0) {
-
-							if (iter->first.length() < largestAcceptedNameLength) // Some optimizations
-								continue;
-							largestAcceptedNameLength = iter->first.length();
-
-							std::string name = iter->first;
-							name.append("_");
-							name.append(iter->second.Variants.at(std::rand() % iter->second.Variants.size()));
-
-							queueActor.Name = name;
-						}
-					}
-				}
-
-				queueActor.PosX = (float)*memInstance->linkData.PosX;
-				queueActor.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
-				queueActor.PosZ = (float)*memInstance->linkData.PosZ;
-
-				for (int i = 0; i < keyCodeActor.Num; i++)
+					queueActor.PosX = (float)*memInstance->linkData.PosX;
+					queueActor.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
+					queueActor.PosZ = (float)*memInstance->linkData.PosZ;
+					
+					queue_mutex.lock(); ////////////////////////////////////////
 					queuedActors.push_back(queueActor);
+					queue_mutex.unlock(); //====================================
+				}	
 			}
 		}
 		{ // I feel like creating scope today
@@ -407,10 +411,12 @@ void mainFn(PPCInterpreter_t* hCPU, uint32_t startTrnsData, uint32_t startRingBu
 	
 	trnsData.interceptRegisters = true; // Just make sure to intercept stuff.. if we don't do this all the time when you warp somewhere else spawns cause it to crash
 
+	queue_mutex.lock(); ////////////////////////////////////////////
 	// Actual actor spawning - just read from queue here.
 	if (queuedActors.size() >= 1) {
 		setupActor(hCPU, trnsData, instData, startRingBuffer, endRingBuffer);
 	}
+	queue_mutex.unlock(); //========================================
 	
 	data_mutex.lock(); ////////////////////////////////////////////////////////////////////
 	memInstance->memory_writeMemoryBE(startTrnsData, trnsData);
