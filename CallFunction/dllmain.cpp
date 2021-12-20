@@ -118,7 +118,8 @@ struct QueueActor {
 // ---------------------------------------------------------------------------------
 std::map<char, std::vector<KeyCodeActor>> keyCodeMap;
 
-std::shared_mutex mutex; // Make this thread-safe.
+std::shared_mutex keycode_mutex; // Make keycodes thread-safe.
+std::shared_mutex data_mutex;
 
 std::map<char, bool> prevKeyStateMap; // Used for key press logic - keeps track of previous key state
 
@@ -187,8 +188,6 @@ void logFn(PPCInterpreter_t* hCPU) {
 }
 
 void setup(PPCInterpreter_t* hCPU, uint32_t startTrnsData) {
-	mutex.lock();
-
 	uint32_t linkPosOffset = 0x113444F0;
 	memInstance->linkData.PosX = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x50); // oh wait,
 	memInstance->linkData.PosY = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x54); // it's
@@ -204,39 +203,17 @@ void setup(PPCInterpreter_t* hCPU, uint32_t startTrnsData) {
 	}
 
 	TransferableData trnsData;
+	data_mutex.lock(); //////////////////////////////////////////////////
 	memInstance->memory_readMemoryBE(startTrnsData, &trnsData); // Just make sure to intercept stuff..
 	trnsData.interceptRegisters = true;
 	memInstance->memory_writeMemoryBE(startTrnsData, trnsData);
+	data_mutex.unlock(); //===============================================
 
 	isSetup = true;
-
-	mutex.unlock();
 }
 
 void queueActors() {
-
-}
-
-void mainFn(PPCInterpreter_t* hCPU, uint32_t startTrnsData, uint32_t startRingBuffer, uint32_t endRingBuffer) {
-	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
-
-	if (!isSetup) {
-		setup(hCPU, startTrnsData);
-		return;
-	}
-
-	mutex.lock();
-
-	TransferableData trnsData;
-	memInstance->memory_readMemoryBE(startTrnsData, &trnsData);
-
-	uint32_t startInstData = trnsData.ringPtr;
-	InstanceData instData;
-	memInstance->memory_readMemoryBE(startInstData, &instData);
-	
-	trnsData.interceptRegisters = true; // Just make sure to intercept stuff.. if we don't do this all the time when you warp somewhere else spawns cause it to crash
-
-
+	keycode_mutex.lock();
 	// Basic key press logic to make sure holding down doesn't spam triggers
 	for (std::map<char, std::vector<KeyCodeActor>>::iterator keyCodeMapIter = keyCodeMap.begin(); keyCodeMapIter != keyCodeMap.end(); ++keyCodeMapIter) {
 		char key = keyCodeMapIter->first;
@@ -294,7 +271,7 @@ void mainFn(PPCInterpreter_t* hCPU, uint32_t startTrnsData, uint32_t startRingBu
 				queueActor.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
 				queueActor.PosZ = (float)*memInstance->linkData.PosZ;
 
-				for (int i = 0; i < keyCodeActor.Num; i ++)
+				for (int i = 0; i < keyCodeActor.Num; i++)
 					queuedActors.push_back(queueActor);
 			}
 		}
@@ -304,106 +281,140 @@ void mainFn(PPCInterpreter_t* hCPU, uint32_t startTrnsData, uint32_t startRingBu
 			itr->second = keyPressed; // Key press logic
 		}
 	}
+	keycode_mutex.unlock();
+}
+
+void setupActor(PPCInterpreter_t* hCPU, TransferableData& trnsData, InstanceData& instData, uint32_t startRingBuffer, uint32_t endRingBuffer) {
+	QueueActor qAct = queuedActors[0];
+
+
+	// Lets set any data that our params will reference:
+	// -------------------------------------------------
+
+	// Copy needed data over to our own storage to not override actor stuff
+	data_mutex.lock_shared(); //////////////////////////////////////////////////
+	memInstance->memory_readMemoryBE(trnsData.f_r7, &instData.actorStorage);
+	data_mutex.unlock_shared(); //==============================================
+
+	int actorStorageLocation = trnsData.ringPtr + sizeof(instData) - sizeof(instData.name) - sizeof(instData.actorStorage);
+	int mubinLocation = trnsData.ringPtr + sizeof(instData) - sizeof(instData.name) - sizeof(instData.actorStorage) + (7 * 4); // The MubinIter lives inside the actor btw
+
+	// Set actor pos to stored pos
+	memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (15 * 4)], &qAct.PosX, sizeof(float));
+	memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (16 * 4)], &qAct.PosY, sizeof(float));
+	memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (17 * 4)], &qAct.PosZ, sizeof(float));
+
+	// We want to make sure there's a fairly high traverseDist
+	float traverseDist = 0.f; // Hmm... this kinda proves this isn't really used
+	short traverseDistInt = (short)traverseDist;
+	memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (18 * 4)], &traverseDist, sizeof(float));
+	memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (37 * 2)], &traverseDistInt, sizeof(short));
+
+	int null = 0;
+	memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (11 * 4)], &null, sizeof(int)); // mLinkData
+
+	// Might as well null out some other things
+	memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (9 * 4)], &null, sizeof(int)); // mData
+	memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (10 * 4)], &null, sizeof(int)); // mProc
+	memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (7 * 4)], &null, sizeof(int)); // idk what this is
+	memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (3 * 4)], &null, sizeof(int)); // or this, either
+
+
+
+	// Not sure what these are, but they helps with traverseDist issues
+	int traverseDistFixer = 0x043B0000;
+	memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (2 * 4)], &traverseDistFixer, sizeof(int));
+	int traverseDistFixer2 = 0x00000016;
+	memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (1 * 4)], &traverseDistFixer2, sizeof(int));
+
+
+	// Oh, and the HashId as well
+	memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (14 * 4)], &null, sizeof(int));
+
+	// And we can make mRevivalGameDataFlagHash an invalid handle
+	int invalid = -1;
+	memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (12 * 4)], &invalid, sizeof(int));
+	// And whatever this is, too
+	memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (13 * 4)], &invalid, sizeof(int));
+
+	// We can also get rid of this junk
+	memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (8 * 4)], &invalid, sizeof(int));
+
+
+
+
+	// Set name!
+	{ // Copy to name string storage... reversed
+		int pos = sizeof(instData.name) - 1;
+		for (char const& c : qAct.Name) {
+			memcpy(instData.name + pos, &c, 1);
+			pos--;
+		}
+		uint8_t nullByte = 0;
+		memcpy(instData.name + pos, &nullByte, 1); // Null terminate!
+	}
+
+	// -------------------------------------------------
+
+	// Set registers for params and stuff
+	hCPU->gpr[3] = trnsData.f_r3;
+	hCPU->gpr[4] = trnsData.ringPtr + sizeof(instData) - sizeof(instData.name);
+	hCPU->gpr[5] = trnsData.f_r5;
+	hCPU->gpr[6] = mubinLocation;
+	hCPU->gpr[7] = actorStorageLocation;
+	hCPU->gpr[8] = 0;
+	hCPU->gpr[9] = 1;
+	hCPU->gpr[10] = 0;
+	trnsData.fnAddr = 0x037b6040; // Address to call to
+
+	trnsData.enabled = true; // This tells the assembly patch to trigger one function call
+
+	trnsData.interceptRegisters = false; // We don't want to intercept *this* function call
+
+	// Write our actor data!
+	data_mutex.lock(); ////////////////////////////////////////////////////
+	memInstance->memory_writeMemoryBE(trnsData.ringPtr, instData);
+	data_mutex.unlock(); //================================================
+
+	trnsData.ringPtr += sizeof(InstanceData); // Move our ring ptr to the next slot!
+	if (trnsData.ringPtr >= endRingBuffer) // If we're at the end of the ring....
+		trnsData.ringPtr = startRingBuffer; // move to the start!
+
+	// Gotta remove this actor from the queue!
+	queuedActors.erase(queuedActors.begin());
+}
+
+void mainFn(PPCInterpreter_t* hCPU, uint32_t startTrnsData, uint32_t startRingBuffer, uint32_t endRingBuffer) {
+	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
+
+	if (!isSetup) {
+		setup(hCPU, startTrnsData);
+		return;
+	}
+
+	queueActors();
+
+	data_mutex.lock_shared(); /////////////////////////////////////////////////////////////////////
+	// Get our transferrable data
+	TransferableData trnsData;
+	memInstance->memory_readMemoryBE(startTrnsData, &trnsData);
+
+	// Get our instance data
+	uint32_t startInstData = trnsData.ringPtr;
+	InstanceData instData;
+	memInstance->memory_readMemoryBE(startInstData, &instData);
+	data_mutex.unlock_shared(); //==================================================================
+	
+	trnsData.interceptRegisters = true; // Just make sure to intercept stuff.. if we don't do this all the time when you warp somewhere else spawns cause it to crash
 
 	// Actual actor spawning - just read from queue here.
 	if (queuedActors.size() >= 1) {
-		QueueActor qAct = queuedActors[0];
-
-
-		// Lets set any data that our params will reference:
-		// -------------------------------------------------
-
-		// Copy needed data over to our own storage to not override actor stuff
-		memInstance->memory_readMemoryBE(trnsData.f_r7, &instData.actorStorage);
-		int actorStorageLocation = trnsData.ringPtr + sizeof(instData) - sizeof(instData.name) - sizeof(instData.actorStorage);
-		int mubinLocation = trnsData.ringPtr + sizeof(instData) - sizeof(instData.name) - sizeof(instData.actorStorage) + (7 * 4); // The MubinIter lives inside the actor btw
-
-		// Set actor pos to stored pos
-		memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (15 * 4)], &qAct.PosX, sizeof(float));
-		memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (16 * 4)], &qAct.PosY, sizeof(float));
-		memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (17 * 4)], &qAct.PosZ, sizeof(float));
-
-		// We want to make sure there's a fairly high traverseDist
-		float traverseDist = 0.f; // Hmm... this kinda proves this isn't really used
-		short traverseDistInt = (short)traverseDist;
-		memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (18 * 4)], &traverseDist, sizeof(float));
-		memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (37 * 2)], &traverseDistInt, sizeof(short));
-
-		int null = 0;
-		memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (11 * 4)], &null, sizeof(int)); // mLinkData
-
-		// Might as well null out some other things
-		memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (9 * 4)], &null, sizeof(int)); // mData
-		memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (10 * 4)], &null, sizeof(int)); // mProc
-		memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (7 * 4)], &null, sizeof(int)); // idk what this is
-		memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (3 * 4)], &null, sizeof(int)); // or this, either
-
-
-
-		// Not sure what these are, but they helps with traverseDist issues
-		int traverseDistFixer = 0x043B0000;
-		memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (2 * 4)], &traverseDistFixer, sizeof(int));
-		int traverseDistFixer2 = 0x00000016;
-		memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (1 * 4)], &traverseDistFixer2, sizeof(int));
-
-
-		// Oh, and the HashId as well
-		memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (14 * 4)], &null, sizeof(int));
-
-		// And we can make mRevivalGameDataFlagHash an invalid handle
-		int invalid = -1;
-		memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (12 * 4)], &invalid, sizeof(int));
-		// And whatever this is, too
-		memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (13 * 4)], &invalid, sizeof(int));
-
-		// We can also get rid of this junk
-		memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (8 * 4)], &invalid, sizeof(int));
-
-
-
-
-		// Set name!
-		{ // Copy to name string storage... reversed
-			int pos = sizeof(instData.name) - 1;
-			for (char const& c : qAct.Name) {
-				memcpy(instData.name + pos, &c, 1);
-				pos--;
-			}
-			uint8_t nullByte = 0;
-			memcpy(instData.name + pos, &nullByte, 1); // Null terminate!
-		}
-
-		// -------------------------------------------------
-
-		// Set registers for params and stuff
-		hCPU->gpr[3] = trnsData.f_r3;
-		hCPU->gpr[4] = trnsData.ringPtr + sizeof(instData) - sizeof(instData.name);
-		hCPU->gpr[5] = trnsData.f_r5;
-		hCPU->gpr[6] = mubinLocation;
-		hCPU->gpr[7] = actorStorageLocation;
-		hCPU->gpr[8] = 0;
-		hCPU->gpr[9] = 1;
-		hCPU->gpr[10] = 0;
-		trnsData.fnAddr = 0x037b6040; // Address to call to
-
-		trnsData.enabled = true; // This tells the assembly patch to trigger one function call
-
-		trnsData.interceptRegisters = false; // We don't want to intercept *this* function call
-
-		// Write our actor data!
-		memInstance->memory_writeMemoryBE(trnsData.ringPtr, instData);
-
-		trnsData.ringPtr += sizeof(InstanceData); // Move our ring ptr to the next slot!
-		if (trnsData.ringPtr >= endRingBuffer) // If we're at the end of the ring....
-			trnsData.ringPtr = startRingBuffer; // move to the start!
-
-		// Gotta remove this actor from the queue!
-		queuedActors.erase(queuedActors.begin());
+		setupActor(hCPU, trnsData, instData, startRingBuffer, endRingBuffer);
 	}
 	
-	
+	data_mutex.lock(); ////////////////////////////////////////////////////////////////////
 	memInstance->memory_writeMemoryBE(startTrnsData, trnsData);
-	mutex.unlock();
+	data_mutex.unlock(); //==================================================================
 }
 
 // A wrapper function to set the params in a more cpp-friendly way
@@ -439,7 +450,7 @@ void registerPresetKeycodes() {
 		}
 
 		// Actually set the keycode!
-		mutex.lock();
+		keycode_mutex.lock();
 		if (command.size() >= 3) {
 			char keycode = std::toupper(command[0][0]);
 
@@ -464,7 +475,7 @@ void registerPresetKeycodes() {
 			prevKeyStateMap.insert({ keycode, false });
 			Console::LogPrint("Keycode added succesfully");
 		}
-		mutex.unlock();
+		keycode_mutex.unlock();
 	}
 }
 
@@ -500,7 +511,7 @@ DWORD WINAPI ConsoleThread(LPVOID param) {
 			);
 		}
 		else if (command[0] == "keycode") {
-			mutex.lock();
+			keycode_mutex.lock();
 			if (command.size() >= 4) {
 				char keycode = std::toupper(command[1][0]);
 
@@ -529,10 +540,10 @@ DWORD WINAPI ConsoleThread(LPVOID param) {
 			else {
 				Console::LogPrint("Format: keycode [key] [actorname(s)]");
 			}
-			mutex.unlock();
+			keycode_mutex.unlock();
 		}
 		else if (command[0] == "rmkeycode") {
-			mutex.lock();
+			keycode_mutex.lock();
 			if (command.size() == 2) {
 				keyCodeMap.erase(std::toupper(command[1][0]));
 				prevKeyStateMap.erase(std::toupper(command[1][0]));
@@ -541,7 +552,7 @@ DWORD WINAPI ConsoleThread(LPVOID param) {
 			else {
 				Console::LogPrint("Format: rmkeycode [key]");
 			}
-			mutex.unlock();
+			keycode_mutex.unlock();
 		}
 		else if (command[0] == "reloadconfig")
 			registerPresetKeycodes();
