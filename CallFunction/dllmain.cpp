@@ -63,10 +63,7 @@ typedef void (*osLib_registerHLEFunctionType)(const char* libraryName, const cha
 
 
 #pragma pack(1)
-struct Data { // This is reversed compared to the gfx pack because we read as big endian.
-	char name[152]; // We'll allocate all unused storage for use for name storage.. just in case of a really long actor name
-	uint8_t actorStorage[104];
-
+struct TransferableData { // This is reversed compared to the gfx pack because we read as big endian.
 	int f_r10;
 	int f_r9;
 	int f_r8;
@@ -76,14 +73,7 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 	int f_r4;
 	int f_r3;
 
-	int n_r10;
-	int n_r9;
-	int n_r8;
-	int n_r7;
-	int n_r6;
-	int n_r5;
-	int n_r4;
-	int n_r3;
+	int ringPtr;
 
 	int fnAddr;
 
@@ -91,6 +81,12 @@ struct Data { // This is reversed compared to the gfx pack because we read as bi
 	bool interceptRegisters;
 
 	bool enabled;
+};
+
+#pragma pack(1)
+struct InstanceData {
+	char name[152]; // We'll allocate all unused storage for use for name storage.. just in case of a really long actor name
+	uint8_t actorStorage[104];
 };
 
 struct KeyCodeActor {
@@ -191,9 +187,10 @@ void logFn(PPCInterpreter_t* hCPU) {
 }
 
 
-
 void mainFn(PPCInterpreter_t* hCPU) {
 	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
+
+	
 	
 	mutex.lock();
 
@@ -213,7 +210,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 		}
 
 		uint32_t startData = hCPU->gpr[3];
-		Data data;
+		TransferableData data;
 		memInstance->memory_readMemoryBE(startData, &data); // Just make sure to intercept stuff..
 		data.interceptRegisters = true;
 		memInstance->memory_writeMemoryBE(startData, data);
@@ -223,12 +220,20 @@ void mainFn(PPCInterpreter_t* hCPU) {
 		return;
 	}
 	
-	uint32_t startData = hCPU->gpr[3];
-	Data data;
+	uint32_t ringBufStart = hCPU->gpr[4];
+	uint32_t ringBufEnd = hCPU->gpr[5];
+
+	uint32_t startTrnsData = hCPU->gpr[3];
+	TransferableData trnsData;
 	
-	memInstance->memory_readMemoryBE(startData, &data);
 	
-	data.interceptRegisters = true; // Just make sure to intercept stuff.. if we don't do this all the time when you warp somewhere else spawns cause it to crash
+	memInstance->memory_readMemoryBE(startTrnsData, &trnsData);
+
+	uint32_t startInstData = trnsData.ringPtr;
+	InstanceData instData;
+	memInstance->memory_readMemoryBE(startInstData, &instData);
+	
+	trnsData.interceptRegisters = true; // Just make sure to intercept stuff.. if we don't do this all the time when you warp somewhere else spawns cause it to crash
 
 
 	// Basic key press logic to make sure holding down doesn't spam triggers
@@ -305,82 +310,88 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			// -------------------------------------------------
 
 			// Copy needed data over to our own storage to not override actor stuff
-			memInstance->memory_readMemoryBE(data.f_r7, &data.actorStorage);
-			int actorStorageLocation = startData + sizeof(data) - sizeof(data.name) - sizeof(data.actorStorage);
-			int mubinLocation = startData + sizeof(data) - sizeof(data.name) - sizeof(data.actorStorage) + (7 * 4); // The MubinIter lives inside the actor btw
+			memInstance->memory_readMemoryBE(trnsData.f_r7, &instData.actorStorage);
+			int actorStorageLocation = trnsData.ringPtr + sizeof(instData) - sizeof(instData.name) - sizeof(instData.actorStorage);
+			int mubinLocation = trnsData.ringPtr + sizeof(instData) - sizeof(instData.name) - sizeof(instData.actorStorage) + (7 * 4); // The MubinIter lives inside the actor btw
 
 			// Set actor pos to stored pos
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (15 * 4)], &qAct.PosX, sizeof(float));
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (16 * 4)], &qAct.PosY, sizeof(float));
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (17 * 4)], &qAct.PosZ, sizeof(float));
+			memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (15 * 4)], &qAct.PosX, sizeof(float));
+			memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (16 * 4)], &qAct.PosY, sizeof(float));
+			memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (17 * 4)], &qAct.PosZ, sizeof(float));
 
 			// We want to make sure there's a fairly high traverseDist
 			float traverseDist = 0.f; // Hmm... this kinda proves this isn't really used
 			short traverseDistInt = (short)traverseDist;
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (18 * 4)], &traverseDist, sizeof(float));
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (37 * 2)], &traverseDistInt, sizeof(short));
+			memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (18 * 4)], &traverseDist, sizeof(float));
+			memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (37 * 2)], &traverseDistInt, sizeof(short));
 
 			int null = 0;
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (11 * 4)], &null, sizeof(int)); // mLinkData
+			memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (11 * 4)], &null, sizeof(int)); // mLinkData
 
 			// Might as well null out some other things
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (9 * 4)], &null, sizeof(int)); // mData
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (10 * 4)], &null, sizeof(int)); // mProc
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (7 * 4)], &null, sizeof(int)); // idk what this is
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (3 * 4)], &null, sizeof(int)); // or this, either
+			memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (9 * 4)], &null, sizeof(int)); // mData
+			memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (10 * 4)], &null, sizeof(int)); // mProc
+			memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (7 * 4)], &null, sizeof(int)); // idk what this is
+			memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (3 * 4)], &null, sizeof(int)); // or this, either
 
 
 
 			// Not sure what these are, but they helps with traverseDist issues
 			int traverseDistFixer = 0x043B0000;
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (2 * 4)], &traverseDistFixer, sizeof(int));
+			memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (2 * 4)], &traverseDistFixer, sizeof(int));
 			int traverseDistFixer2 = 0x00000016;
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (1 * 4)], &traverseDistFixer2, sizeof(int));
+			memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (1 * 4)], &traverseDistFixer2, sizeof(int));
 
 
 			// Oh, and the HashId as well
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (14 * 4)], &null, sizeof(int));
+			memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (14 * 4)], &null, sizeof(int));
 
 			// And we can make mRevivalGameDataFlagHash an invalid handle
 			int invalid = -1;
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (12 * 4)], &invalid, sizeof(int));
+			memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (12 * 4)], &invalid, sizeof(int));
 			// And whatever this is, too
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (13 * 4)], &invalid, sizeof(int));
+			memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (13 * 4)], &invalid, sizeof(int));
 
 			// We can also get rid of this junk
-			memcpy(&data.actorStorage[sizeof(data.actorStorage) - (8 * 4)], &invalid, sizeof(int));
+			memcpy(&instData.actorStorage[sizeof(instData.actorStorage) - (8 * 4)], &invalid, sizeof(int));
 
 
 
 
 			// Set name!
 			{ // Copy to name string storage... reversed
-				int pos = sizeof(data.name) - 1;
+				int pos = sizeof(instData.name) - 1;
 				for (char const& c : qAct.Name) {
-					memcpy(data.name + pos, &c, 1);
+					memcpy(instData.name + pos, &c, 1);
 					pos--;
 				}
 				uint8_t nullByte = 0;
-				memcpy(data.name + pos, &nullByte, 1); // Null terminate!
+				memcpy(instData.name + pos, &nullByte, 1); // Null terminate!
 			}
 
 			// -------------------------------------------------
 
 			// Set registers for params and stuff
-			data.n_r3 = data.f_r3;
-			data.n_r4 = startData + sizeof(data) - sizeof(data.name);
-			data.n_r5 = data.f_r5;
-			data.n_r6 = mubinLocation;
-			data.n_r7 = actorStorageLocation;
-			data.n_r8 = 0;
-			data.n_r9 = 1;
-			data.n_r10 = 0;
+			hCPU->gpr[3] = trnsData.f_r3;
+			hCPU->gpr[4] = trnsData.ringPtr + sizeof(instData) - sizeof(instData.name);
+			hCPU->gpr[5] = trnsData.f_r5;
+			hCPU->gpr[6] = mubinLocation;
+			hCPU->gpr[7] = actorStorageLocation;
+			hCPU->gpr[8] = 0;
+			hCPU->gpr[9] = 1;
+			hCPU->gpr[10] = 0;
+			trnsData.fnAddr = 0x037b6040; // Address to call to
 
-			data.fnAddr = 0x037b6040; // Address to call to
+			trnsData.enabled = true; // This tells the assembly patch to trigger one function call
 
-			data.enabled = true; // This tells the assembly patch to trigger one function call
+			trnsData.interceptRegisters = false; // We don't want to intercept *this* function call
 
-			data.interceptRegisters = false; // We don't want to intercept *this* function call
+			// Write our actor data!
+			memInstance->memory_writeMemoryBE(trnsData.ringPtr, instData);
+
+			trnsData.ringPtr += sizeof(InstanceData); // Move our ring ptr to the next slot!
+			if (trnsData.ringPtr >= ringBufEnd) // If we're at the end of the ring....
+				trnsData.ringPtr = ringBufStart; // move to the start!
 
 			// Gotta remove this actor from the queue!
 			queuedActors.erase(queuedActors.begin());
@@ -393,7 +404,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 		}
 	}
 	
-	memInstance->memory_writeMemoryBE(startData, data);
+	memInstance->memory_writeMemoryBE(startTrnsData, trnsData);
 	mutex.unlock();
 }
 
