@@ -238,19 +238,14 @@ void queueActors() {
 									name.append("_");
 									name.append(variant);
 								}
-
-								queueActor.PosX = (float)*memInstance->linkData.PosX;
-								queueActor.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
-								queueActor.PosZ = (float)*memInstance->linkData.PosZ;
-
 								queueActor.Name = name;
-								queue_mutex.lock(); ////////////////////////////////////////
-								queuedActors.push_back(queueActor);
-								queue_mutex.unlock(); //====================================
-
+								Console::LogPrint(queueActor.Name);
 								int i = enemyActor.MaxWeaponSlots;
+
+								// Handles randomized weapon spawning
 								if (i != 0){
 									while (i <= iter->second.MaxWeaponSlots) {
+										Console::LogPrint(i);
 										QueueActor queueWeapon;
 										for (std::map<std::string, ActorData::Weapon>::iterator iter = ActorData::WeaponClasses.begin(); iter != ActorData::WeaponClasses.end(); ++iter) {
 											std::string weaponName = iter->first;
@@ -260,13 +255,19 @@ void queueActors() {
 											weaponName.append(iter->second.Variants.at(std::rand() % iter->second.Variants.size()));
 
 											int slotCount = enemyActor.WieldableProfiles[weaponProfile];
+											i = i + slotCount;
 											queueWeapon.Name = weaponName;
+
+											Console::LogPrint(queueWeapon.Name);
 
 											queueWeapon.PosX = (float)*memInstance->linkData.PosX;
 											queueWeapon.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
 											queueWeapon.PosZ = (float)*memInstance->linkData.PosZ;
 
-											queueActor.Name = name;
+											//queueActor.Name = name;
+											queue_mutex.lock();
+											queuedActors.push_back(queueWeapon);
+											queue_mutex.unlock();
 										queue_mutex.lock(); ////////////////////////////////////////
 										queuedActors.push_back(queueActor);
 										queue_mutex.unlock(); //====================================
@@ -296,6 +297,14 @@ void queueActors() {
 						}
 						*/
 					}
+
+					queueActor.PosX = (float)*memInstance->linkData.PosX;
+					queueActor.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
+					queueActor.PosZ = (float)*memInstance->linkData.PosZ;
+
+					queue_mutex.lock(); ////////////////////////////////////////
+					queuedActors.push_back(queueActor);
+					queue_mutex.unlock(); //====================================
 
 				}
 			}
