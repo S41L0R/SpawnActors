@@ -189,6 +189,8 @@ void logFn(PPCInterpreter_t* hCPU) {
 }
 
 void setup(PPCInterpreter_t* hCPU, uint32_t startTrnsData) {
+	Console::LogPrint("It looks like you've correctly set up SpawnActors.");
+
 	uint32_t linkPosOffset = 0x113444F0;
 	memInstance->linkData.PosX = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x50); // oh wait,
 	memInstance->linkData.PosY = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x54); // it's
@@ -196,6 +198,7 @@ void setup(PPCInterpreter_t* hCPU, uint32_t startTrnsData) {
 
 	// Realistically, no one's gonna be at *exactly* 0 0 0
 	if (*memInstance->linkData.PosX == 0.f && *memInstance->linkData.PosY == 0.f && *memInstance->linkData.PosZ == 0.f) {
+		Console::LogPrint(""); // New line
 		Console::LogPrint("Whelp... 0 0 0 Glitch. Restart cemu and try again!");
 		Console::LogPrint("I really need to figure out why this happens...");
 		Console::LogPrint("I could do what LibreVR's Memory Editor does, which is an AOB scan, but the problems I have with that are:");
@@ -433,8 +436,8 @@ void mainFn(PPCInterpreter_t* hCPU) {
 
 void init() {
     osLib_registerHLEFunctionType osLib_registerHLEFunction = (osLib_registerHLEFunctionType)GetProcAddress(GetModuleHandleA("Cemu.exe"), "osLib_registerHLEFunction");
-	osLib_registerHLEFunction("coreinit", "fnCallMain", static_cast<void (*) (PPCInterpreter_t*)>(&mainFn)); // Give our assembly patch something to hook into
-	osLib_registerHLEFunction("coreinit", "logFn", &logFn); // And basic logging tools
+	osLib_registerHLEFunction("spawnactors", "fnCallMain", static_cast<void (*) (PPCInterpreter_t*)>(&mainFn)); // Give our assembly patch something to hook into
+	osLib_registerHLEFunction("spawnactors", "logFn", &logFn); // And basic logging tools
 }
 
 void registerPresetKeycodes() {

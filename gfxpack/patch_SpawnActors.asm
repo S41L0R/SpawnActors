@@ -3,6 +3,19 @@ moduleMatches = 0x6267BFD0
 
 .origin = codecave
 
+HLELoc:
+.int 0
+
+HLEName:
+.string "fnCallMain"
+
+ModuleHandle:
+.int 0
+
+ModuleName:
+.string "spawnactors"
+
+
 ; A whole bunch of general storage we can use for whatever we want
 ; 32768 bytes, to be specific. This is enough for 128 actor sections
 ; Broken up into 8 byte sections. (The biggest cemu will allow other than strings.)
@@ -4166,13 +4179,42 @@ stw r3, 44(r1)
 ; Lets call the function from the dll
 ; so that we can get stuff to call with.
 
+; Check if we already have our dll func addr
+lis r11, HLELoc@ha
+lwz r11, HLELoc@l(r11)
+cmpwi r11, 0x0
+bne CallDllFunc
+
+lis r3, ModuleName@ha
+addi r3, r3, ModuleName@l
+lis r4, ModuleHandle@ha
+addi r4, r4, ModuleHandle@l
+bla import.coreinit.OSDynLoad_Acquire
+
+cmpwi r3, 0x0 ; Anything other than 0x0 is an error code.. 
+bne restoreAndExit ; in this case it means that the module isn't registered (yet).
+
+lis r3, ModuleHandle@ha
+lwz r3, ModuleHandle@l(r3)
+li r4, 0x0
+lis r5, HLEName@ha
+addi r5, r5, HLEName@l
+lis r6, HLELoc@ha
+addi r6, r6, HLELoc@l
+bla import.coreinit.OSDynLoad_FindExport
+
+CallDllFunc:
+lis r11, HLELoc@ha
+lwz r11, HLELoc@l(r11)
+mtctr r11
+
 lis r3, startData@ha
 addi r3, r3, startData@l
 lis r4, StorageStart@ha
 addi r4, r4, StorageStart@l
 lis r5, StorageEnd@ha
 addi r5, r5, StorageEnd@l
-bla import.coreinit.fnCallMain
+bctrl
 
 
 ; Set up if statment
