@@ -94,6 +94,8 @@ namespace Threads {
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
+        io.IniFilename = NULL; // Let's not save configs... we don't wanna pollute the cemu directory. Maybe once we can get the dll directory we can put it there.
+
         io.WantCaptureMouse = false;
 
         // Setup Dear ImGui style
