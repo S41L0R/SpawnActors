@@ -44,7 +44,7 @@ void DrawItems() {
 }
 
 namespace Threads {
-    DWORD WINAPI Threads::UIThread(LPVOID param)
+    DWORD WINAPI UIThread(LPVOID param)
     {
         // Setup window
         glfwSetErrorCallback(glfw_error_callback);
