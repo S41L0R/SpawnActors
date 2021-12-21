@@ -194,6 +194,9 @@ void setup(PPCInterpreter_t* hCPU, uint32_t startTrnsData) {
 		Console::LogPrint("What we'll probably end up doing is hooking into the coord init instructions, but we need to find that first.");
 	}
 
+	//MemoryInstance::floatBE* pos = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + 0x1054ae90);
+	//Console::LogPrint((float)*pos);
+
 	TransferableData trnsData;
 	data_mutex.lock(); //////////////////////////////////////////////////
 	memInstance->memory_readMemoryBE(startTrnsData, &trnsData); // Just make sure to intercept stuff..
@@ -263,11 +266,11 @@ void queueActors() {
 					queueActor.PosX = (float)*memInstance->linkData.PosX;
 					queueActor.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
 					queueActor.PosZ = (float)*memInstance->linkData.PosZ;
-					
+
 					queue_mutex.lock(); ////////////////////////////////////////
 					queuedActors.push_back(queueActor);
 					queue_mutex.unlock(); //====================================
-				}	
+				}
 			}
 		}
 		{ // I feel like creating scope today
@@ -399,7 +402,7 @@ void mainFn(PPCInterpreter_t* hCPU, uint32_t startTrnsData, uint32_t startRingBu
 	InstanceData instData;
 	memInstance->memory_readMemoryBE(startInstData, &instData);
 	data_mutex.unlock_shared(); //==================================================================
-	
+
 	trnsData.interceptRegisters = true; // Just make sure to intercept stuff.. if we don't do this all the time when you warp somewhere else spawns cause it to crash
 
 	queue_mutex.lock(); ////////////////////////////////////////////
@@ -408,7 +411,7 @@ void mainFn(PPCInterpreter_t* hCPU, uint32_t startTrnsData, uint32_t startRingBu
 		setupActor(hCPU, trnsData, instData, startRingBuffer, endRingBuffer);
 	}
 	queue_mutex.unlock(); //========================================
-	
+
 	data_mutex.lock(); ////////////////////////////////////////////////////////////////////
 	memInstance->memory_writeMemoryBE(startTrnsData, trnsData);
 	data_mutex.unlock(); //==================================================================
