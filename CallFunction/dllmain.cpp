@@ -207,9 +207,6 @@ void setup(PPCInterpreter_t* hCPU, uint32_t startTrnsData) {
 		Console::LogPrint("What we'll probably end up doing is hooking into the coord init instructions, but we need to find that first.");
 	}
 
-	//MemoryInstance::floatBE* pos = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + 0x1054ae90);
-	//Console::LogPrint((float)*pos);
-
 	TransferableData trnsData;
 	data_mutex.lock(); //////////////////////////////////////////////////
 	memInstance->memory_readMemoryBE(startTrnsData, &trnsData); // Just make sure to intercept stuff..
@@ -397,6 +394,10 @@ void setupActor(PPCInterpreter_t* hCPU, TransferableData& trnsData, InstanceData
 
 void mainFn(PPCInterpreter_t* hCPU, uint32_t startTrnsData, uint32_t startRingBuffer, uint32_t endRingBuffer) {
 	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
+
+	// This is the stuff I'm currently using to test different values for potential Link coords
+	//MemoryInstance::floatBE* pos = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + 0x10263910);
+	//Console::LogPrint((float)*pos);
 
 	if (!isSetup) {
 		setup(hCPU, startTrnsData);
