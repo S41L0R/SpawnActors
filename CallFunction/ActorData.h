@@ -137,50 +137,82 @@ namespace ActorData {
 			EnemyClasses.insert(std::pair<const std::string, Enemy>("Enemy_Lynel", enemy));
 		}
 
+		//Enemy_Chuchu
+		{
+			std::vector<std::string> variants = { "Junior", "Middle", "Senior", "Fire_Junior", "Fire_Middle", "Fire_Senior", "Ice_Junior", "Ice_Middle", "Ice_Senior", "Electric_Junior", "Electric_Middle", "Electric_Senior" };
+			std::vector<std::string> wieldableProfiles = {};
+			Enemy enemy;
+			enemy.Variants = variants;
+			enemy.WieldableProfiles = wieldableProfiles;
+			EnemyClasses.insert(std::pair<const std::string, Enemy>("Enemy_Chuchu", enemy));
+		}
+
 		// -----------------------------------------------
 
 		// WeaponClasses
 		// -----------------------------------------------
 		// Sword
 		{
-			std::vector<std::string> variants = { "073", "023" };
+			std::vector<std::string> variants = {};
+			for (int i = 1; i <= 73; i++) {
+				std::ostringstream ostr;
+				ostr << std::setfill('0') << std::setw(3) << i;
+				variants.push_back(ostr.str());
+			}
+
 			Weapon weapon;
 			weapon.Variants = variants;
 			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_Sword", weapon));
 		}
 
-		// Shield - This will need to be dynamically linked and randomized if the chosen enemy uses a sword
-		{
-			std::vector<std::string> variants = {"038", "030"};
-			Weapon weapon;
-			weapon.Variants = std::vector<std::string>();
-			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_Shield", weapon));
-		}
-
 		// Lsword
 		{
-			std::vector<std::string> variants = { "097", "055" };
+			std::vector<std::string> variants = {};
+			for (int i = 1; i <= 60; i++) {
+				std::ostringstream ostr;
+				ostr << std::setfill('0') << std::setw(3) << i;
+				variants.push_back(ostr.str());
+			}
+
 			Weapon weapon;
 			weapon.Variants = variants;
 			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_Lsword", weapon));
 		}
 		// Spear
 		{
-			std::vector<std::string> variants = { "038", "024" };
+			std::vector<std::string> variants = {};
+			for (int i = 1; i <= 50; i++) {
+				std::ostringstream ostr;
+				ostr << std::setfill('0') << std::setw(3) << i;
+				variants.push_back(ostr.str());
+			}
+
 			Weapon weapon;
 			weapon.Variants = variants;
 			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_Spear", weapon));
 		}
 		// Bow
 		{
-			std::vector<std::string> variants = { "032", "016" };
+			std::vector<std::string> variants = {};
+			for (int i = 1; i <= 40; i++) {
+				std::ostringstream ostr;
+				ostr << std::setfill('0') << std::setw(3) << i;
+				variants.push_back(ostr.str());
+			}
+
 			Weapon weapon;
 			weapon.Variants = variants;
 			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_Bow", weapon));
 		}
 		// Shield
 		{
-			std::vector<std::string> variants = { "014", "018" };
+			std::vector<std::string> variants = {};
+			for (int i = 1; i <= 42; i++) {
+				std::ostringstream ostr;
+				ostr << std::setfill('0') << std::setw(3) << i;
+				variants.push_back(ostr.str());
+			}
+
 			Weapon weapon;
 			weapon.Variants = variants;
 			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_Shield", weapon));
