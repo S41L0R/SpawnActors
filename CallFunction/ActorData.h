@@ -4,18 +4,18 @@
 #include <map>
 
 namespace ActorData {
+
 	struct Enemy {
 		std::vector<std::string> Variants;
-		std::vector<std::string> WieldableProfiles;
+		std::map<std::string, int> WieldableProfiles;
 		int MaxWeaponSlots = 0;
 	};
 
 	struct Weapon {
 		std::vector<std::string> Variants;
+		std::string profile;
 	};
 
-
-	std::vector<std::string> Profiles = {"Sword", "Lsword", "Spear", "Bow"};
 	std::map<std::string, Enemy> EnemyClasses;
 	std::map<std::string, Weapon> WeaponClasses;
 
@@ -26,7 +26,7 @@ namespace ActorData {
 		// Enemy_Bokoblin
 		{
 			std::vector<std::string> variants = { "Junior", "Middle", "Senior", "Gold" };
-			std::vector<std::string> wieldableProfiles = { "Sword", "Lsword", "Spear", "Bow" };
+			std::map<std::string, int> wieldableProfiles = { {"Sword", 1}, {"Lsword", 2}, {"Spear", 2}, {"Bow", 2}, {"Shield", 1} };
 			Enemy enemy;
 			enemy.Variants = variants;
 			enemy.WieldableProfiles = wieldableProfiles;
@@ -37,7 +37,7 @@ namespace ActorData {
 		// Enemy_Moriblin
 		{
 			std::vector<std::string> variants = { "Junior", "Middle", "Senior", "Gold" };
-			std::vector<std::string> wieldableProfiles = { "Sword", "Lsword", "Spear", "Bow" };
+			std::map<std::string, int> wieldableProfiles = { {"Sword", 1}, {"Lsword", 2}, {"Spear", 2}, {"Bow", 2}, {"Shield", 1} };
 			Enemy enemy;
 			enemy.Variants = variants;
 			enemy.WieldableProfiles = wieldableProfiles;
@@ -48,7 +48,7 @@ namespace ActorData {
 		// Enemy_Lizalfos
 		{
 			std::vector<std::string> variants = { "Junior", "Middle", "Senior", "Gold" };
-			std::vector<std::string> wieldableProfiles = { "Sword", "Lsword", "Spear", "Bow" };
+			std::map<std::string, int> wieldableProfiles = { {"Sword", 1}, {"Lsword", 2}, {"Spear", 2}, {"Bow", 2}, {"Shield", 1} };
 			Enemy enemy;
 			enemy.Variants = variants;
 			enemy.WieldableProfiles = wieldableProfiles;
@@ -59,7 +59,7 @@ namespace ActorData {
 		// Enemy_Guardian
 		{
 			std::vector<std::string> variants = { "A", "B", "C" };
-			std::vector<std::string> wieldableProfiles = {};
+			std::map<std::string, int> wieldableProfiles = { {"Sword", 0}, {"Lsword", 0}, {"Spear", 0}, {"Bow", 0}, {"Shield", 0} };
 			Enemy enemy;
 			enemy.Variants = variants;
 			enemy.WieldableProfiles = wieldableProfiles;
@@ -70,7 +70,7 @@ namespace ActorData {
 		// Enemy_Guardian_Mini_Baby
 		{
 			std::vector<std::string> variants = { "", "Dark" };
-			std::vector<std::string> wieldableProfiles = {};
+			std::map<std::string, int> wieldableProfiles = { {"Sword", 0}, {"Lsword", 0}, {"Spear", 0}, {"Bow", 0}, {"Shield", 0} };
 			Enemy enemy;
 			enemy.Variants = variants;
 			enemy.WieldableProfiles = wieldableProfiles;
@@ -81,43 +81,44 @@ namespace ActorData {
 		// Enemy_Guardian_Mini_Junior
 		{
 			std::vector<std::string> variants = { "Dark", "Wipe", "" };
-			std::vector<std::string> wieldableProfiles = { "Sword", "Lsword", "Spear" };
+			std::map<std::string, int> wieldableProfiles = { {"Sword", 1}, {"Lsword", 1}, {"Spear", 1}, {"Bow", 0}, {"Shield", 1} };
 			Enemy enemy;
 			enemy.Variants = variants;
 			enemy.WieldableProfiles = wieldableProfiles;
-			//enemy.MaxWeaponSlots = 1;
+			enemy.MaxWeaponSlots = 1;
 			EnemyClasses.insert(std::pair<const std::string, Enemy>("Enemy_Guardian_Mini_Junior", enemy));
 		}
 
 		// Enemy_Guardian_Mini_Middle
 		{
 			std::vector<std::string> variants = { "Middle", "Middle_Dark", "Practice",};
-			std::vector<std::string> wieldableProfiles = { "Sword", "Lsword", "Spear" };
+			std::map<std::string, int> wieldableProfiles = { {"Sword", 1}, {"Lsword", 1}, {"Spear", 1}, {"Bow", 0}, {"Shield", 1} };
 			Enemy enemy;
 			enemy.Variants = variants;
 			enemy.WieldableProfiles = wieldableProfiles;
-			//enemy.MaxWeaponSlots = 2;
+			enemy.MaxWeaponSlots = 2;
 			EnemyClasses.insert(std::pair<const std::string, Enemy>("Enemy_Guardian_Mini", enemy));
 		}
 
 		// Enemy_Guardian_Mini_Senior
 		{
 			std::vector<std::string> variants = { "Dark", ""};
-			std::vector<std::string> wieldableProfiles = { "Sword", "Lsword", "Spear" };
+			std::map<std::string, int> wieldableProfiles = { {"Sword", 1}, {"Lsword", 1}, {"Spear", 1}, {"Bow", 0}, {"Shield", 1} };
 			Enemy enemy;
 			enemy.Variants = variants;
 			enemy.WieldableProfiles = wieldableProfiles;
-			//enemy.MaxWeaponSlots = 3;
+			enemy.MaxWeaponSlots = 3;
 			EnemyClasses.insert(std::pair<const std::string, Enemy>("Enemy_Guardian_Mini_Senior", enemy));
 		}
 
 		// Enemy_Golem
 		{
 			std::vector<std::string> variants = { "Fire", "Ice", "Junior", "Middle", "Senior"};
-			std::vector<std::string> wieldableProfiles = {};
+			std::map<std::string, int> wieldableProfiles = { {"Sword", 0}, {"Lsword", 0}, {"Spear", 0}, {"Bow", 0}, {"Shield", 0} };
 			Enemy enemy;
 			enemy.Variants = variants;
 			enemy.WieldableProfiles = wieldableProfiles;
+			enemy.MaxWeaponSlots = 0;
 			EnemyClasses.insert(std::pair<const std::string, Enemy>("Enemy_Golem", enemy));
 		}
 
@@ -130,7 +131,7 @@ namespace ActorData {
 		//Enemy_Lynel
 		{
 			std::vector<std::string> variants = { "", "Junior", "Dark", "Middle", "Senior", "Gold" };
-			std::vector<std::string> wieldableProfiles = { "Sword", "Lsword", "Spear", "Bow" };
+			std::map<std::string, int> wieldableProfiles = { {"Sword", 1}, {"Lsword", 2}, {"Spear", 2}, {"Bow", 1}, {"Shield", 1} };
 			Enemy enemy;
 			enemy.Variants = variants;
 			enemy.WieldableProfiles = wieldableProfiles;
@@ -140,7 +141,7 @@ namespace ActorData {
 		//Enemy_Chuchu
 		{
 			std::vector<std::string> variants = { "Junior", "Middle", "Senior", "Fire_Junior", "Fire_Middle", "Fire_Senior", "Ice_Junior", "Ice_Middle", "Ice_Senior", "Electric_Junior", "Electric_Middle", "Electric_Senior" };
-			std::vector<std::string> wieldableProfiles = {};
+			std::map<std::string, int> wieldableProfiles = { {"Sword", 0}, {"Lsword", 0}, {"Spear", 0}, {"Bow", 0}, {"Shield", 0} };
 			Enemy enemy;
 			enemy.Variants = variants;
 			enemy.WieldableProfiles = wieldableProfiles;
@@ -161,6 +162,7 @@ namespace ActorData {
 			}
 
 			Weapon weapon;
+			weapon.profile = (std::string)"Sword";
 			weapon.Variants = variants;
 			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_Sword", weapon));
 		}
@@ -175,6 +177,7 @@ namespace ActorData {
 			}
 
 			Weapon weapon;
+			weapon.profile = (std::string)"Lsword";
 			weapon.Variants = variants;
 			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_Lsword", weapon));
 		}
@@ -188,6 +191,7 @@ namespace ActorData {
 			}
 
 			Weapon weapon;
+			weapon.profile = (std::string)"Spear";
 			weapon.Variants = variants;
 			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_Spear", weapon));
 		}
@@ -201,6 +205,7 @@ namespace ActorData {
 			}
 
 			Weapon weapon;
+			weapon.profile = (std::string)"Bow";
 			weapon.Variants = variants;
 			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_Bow", weapon));
 		}
@@ -214,6 +219,7 @@ namespace ActorData {
 			}
 
 			Weapon weapon;
+			weapon.profile = (std::string)"Shield";
 			weapon.Variants = variants;
 			WeaponClasses.insert(std::pair<const std::string, Weapon>("Weapon_Shield", weapon));
 		}

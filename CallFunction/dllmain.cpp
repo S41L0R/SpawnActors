@@ -222,6 +222,8 @@ void queueActors() {
 					queueActor.Name = keyCodeActor.Name; // Default
 					if (keyCodeActor.Randomized) {
 						int largestAcceptedNameLength = 0;
+
+						// Sets the variants *I think*
 						for (std::map<std::string, ActorData::Enemy>::iterator iter = ActorData::EnemyClasses.begin(); iter != ActorData::EnemyClasses.end(); ++iter) {
 							if (keyCodeActor.Name.find(iter->first, 0) == 0) {
 
@@ -229,6 +231,7 @@ void queueActors() {
 									continue;
 								largestAcceptedNameLength = iter->first.length();
 
+								ActorData::Enemy enemyActor = iter->second;
 								std::string name = iter->first;
 								std::string variant = iter->second.Variants.at(std::rand() % iter->second.Variants.size());
 								if (variant != "") {
@@ -236,13 +239,46 @@ void queueActors() {
 									name.append(variant);
 								}
 
-								//for (int i = 0; i <= iter->second.MaxWeaponSlots; i++) {
+								queueActor.PosX = (float)*memInstance->linkData.PosX;
+								queueActor.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
+								queueActor.PosZ = (float)*memInstance->linkData.PosZ;
 
-								//}
 								queueActor.Name = name;
+								queue_mutex.lock(); ////////////////////////////////////////
+								queuedActors.push_back(queueActor);
+								queue_mutex.unlock(); //====================================
+
+								int i = enemyActor.MaxWeaponSlots;
+								if (i != 0){
+									while (i <= iter->second.MaxWeaponSlots) {
+										QueueActor queueWeapon;
+										for (std::map<std::string, ActorData::Weapon>::iterator iter = ActorData::WeaponClasses.begin(); iter != ActorData::WeaponClasses.end(); ++iter) {
+											std::string weaponName = iter->first;
+											std::string weaponProfile = iter->second.profile;
+
+											weaponName.append("_");
+											weaponName.append(iter->second.Variants.at(std::rand() % iter->second.Variants.size()));
+
+											int slotCount = enemyActor.WieldableProfiles[weaponProfile];
+											queueWeapon.Name = weaponName;
+
+											queueWeapon.PosX = (float)*memInstance->linkData.PosX;
+											queueWeapon.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
+											queueWeapon.PosZ = (float)*memInstance->linkData.PosZ;
+
+											queueActor.Name = name;
+										queue_mutex.lock(); ////////////////////////////////////////
+										queuedActors.push_back(queueActor);
+										queue_mutex.unlock(); //====================================
+
+										}
+									}
+
+								}
 							}
 						}
 
+						/*
 						largestAcceptedNameLength = 0;
 						for (std::map<std::string, ActorData::Weapon>::iterator iter = ActorData::WeaponClasses.begin(); iter != ActorData::WeaponClasses.end(); ++iter) {
 							if (keyCodeActor.Name.find(iter->first, 0) == 0) {
@@ -258,15 +294,9 @@ void queueActors() {
 								queueActor.Name = name;
 							}
 						}
+						*/
 					}
 
-					queueActor.PosX = (float)*memInstance->linkData.PosX;
-					queueActor.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
-					queueActor.PosZ = (float)*memInstance->linkData.PosZ;
-
-					queue_mutex.lock(); ////////////////////////////////////////
-					queuedActors.push_back(queueActor);
-					queue_mutex.unlock(); //====================================
 				}
 			}
 		}
