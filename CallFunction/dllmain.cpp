@@ -192,8 +192,9 @@ void logFn(PPCInterpreter_t* hCPU) {
 
 void mainFn(PPCInterpreter_t* hCPU) {
 	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
-	
+
 	mutex.lock();
+
 
 	if (!setup) {
 		uint32_t linkPosOffset = 0x113444F0;
@@ -210,6 +211,9 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			Console::LogPrint("  B. It requires some complicated region finding");
 		}
 
+		//MemoryInstance::floatBE* pos = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + 0x1054ae90);
+		//Console::LogPrint((float)*pos);
+
 		uint32_t startData = hCPU->gpr[3];
 		Data data;
 		memInstance->memory_readMemoryBE(startData, &data); // Just make sure to intercept stuff..
@@ -220,12 +224,12 @@ void mainFn(PPCInterpreter_t* hCPU) {
 		mutex.unlock();
 		return;
 	}
-	
+
 	uint32_t startData = hCPU->gpr[3];
 	Data data;
-	
+
 	memInstance->memory_readMemoryBE(startData, &data);
-	
+
 	data.interceptRegisters = true; // Just make sure to intercept stuff.. if we don't do this all the time when you warp somewhere else spawns cause it to crash
 
 
@@ -389,7 +393,7 @@ void mainFn(PPCInterpreter_t* hCPU) {
 			itr->second = keyPressed; // Key press logic
 		}
 	}
-	
+
 	memInstance->memory_writeMemoryBE(startData, data);
 	mutex.unlock();
 }
