@@ -3,11 +3,17 @@ moduleMatches = 0x6267BFD0
 
 .origin = codecave
 
-HLELoc:
+HLE_main_addr:
 .int 0
 
-HLEName:
+HLE_main:
 .string "fnCallMain"
+
+HLE_linkcoords_addr:
+.int 0
+
+HLE_linkcoords:
+.string "setLinkCoordsAddr"
 
 ModuleHandle:
 .int 0
@@ -4180,10 +4186,10 @@ stw r3, 44(r1)
 ; so that we can get stuff to call with.
 
 ; Check if we already have our dll func addr
-lis r11, HLELoc@ha
-lwz r11, HLELoc@l(r11)
+lis r11, HLE_main_addr@ha
+lwz r11, HLE_main_addr@l(r11)
 cmpwi r11, 0x0
-bne CallDllFunc
+bne Call_HLE_main
 
 lis r3, ModuleName@ha
 addi r3, r3, ModuleName@l
@@ -4192,20 +4198,20 @@ addi r4, r4, ModuleHandle@l
 bla import.coreinit.OSDynLoad_Acquire
 
 cmpwi r3, 0x0 ; Anything other than 0x0 is an error code.. 
-bne restoreAndExit ; in this case it means that the module isn't registered (yet).
+bne RestoreAndExit_main ; in this case it means that the module isn't registered (yet).
 
 lis r3, ModuleHandle@ha
 lwz r3, ModuleHandle@l(r3)
 li r4, 0x0
-lis r5, HLEName@ha
-addi r5, r5, HLEName@l
-lis r6, HLELoc@ha
-addi r6, r6, HLELoc@l
+lis r5, HLE_main@ha
+addi r5, r5, HLE_main@l
+lis r6, HLE_main_addr@ha
+addi r6, r6, HLE_main_addr@l
 bla import.coreinit.OSDynLoad_FindExport
 
-CallDllFunc:
-lis r11, HLELoc@ha
-lwz r11, HLELoc@l(r11)
+Call_HLE_main:
+lis r11, HLE_main_addr@ha
+lwz r11, HLE_main_addr@l(r11)
 mtctr r11
 
 lis r3, startData@ha
@@ -4221,7 +4227,7 @@ bctrl
 lis r11, Enabled@ha
 lbz r11, Enabled@l(r11)
 cmpwi r11, 0x0
-beq restoreAndExit ; We can skip over applying params if we're not calling the func, so putting this here is fine.
+beq RestoreAndExit_main ; We can skip over applying params if we're not calling the func, so putting this here is fine.
 
 ; Set up where to jump to...
 lis r11, FunctionToJump@ha
@@ -4229,8 +4235,8 @@ lwz r11, FunctionToJump@l(r11)
 mtctr r11
 
 ; ... and where to jump back to
-lis r11, restoreAndExit@ha
-addi r11, r11, restoreAndExit@l
+lis r11, RestoreAndExit_main@ha
+addi r11, r11, RestoreAndExit_main@l
 mtlr r11
 
 
@@ -4242,7 +4248,7 @@ stb r11, Enabled@l(r12)
 ; Call the function
 bctr
 
-restoreAndExit:
+RestoreAndExit_main:
 ; -----------------------------------
 
 ; Restore registers
@@ -4335,12 +4341,159 @@ InterceptRestoreAndExit:
 ; Restore registers we used
 lwz r0, 0(r1)
 lwz r14, 4(r1)
-addi r1, r1, 0x8; Move the heap pointer back!
+addi r1, r1, 0x8 ; Move the heap pointer back!
 
 ; original instruction:
 stwu r1, -0x38(r1)
 
 ; Return
 b 0x037b6044
+
+; ----------------------------------------------
+
+
+
+; Link coordinate address finder
+; ----------------------------------------------
+IsCoordLink:
+.byte 0
+
+MarkCoordsAsLink:
+; Back up registers we'll use
+addi r1, r1, -0x8
+stw r11, 0(r1)
+stw r12, 4(r1)
+
+; Set IsCoordLink to true
+li r11, 0x1
+lis r12, IsCoordLink@ha
+stw r11, IsCoordLink@l(r12)
+
+; Restore registers
+lwz r11, 0(r1)
+lwz r12, 4(r1)
+addi r1, r1, 0x8
+
+; Do instruction we're replacing
+or r3, r28, r28
+
+; Branch back
+b 0x02d66b60
+
+
+
+0x02d66b5c = b MarkCoordsAsLink
+
+
+
+ReturnLinkCoordsAddress:
+; Back up registers we'll use
+addi r1, r1, -0x18
+stw r3, 0(r1)
+stw r4, 4(r1)
+stw r5, 8(r1)
+stw r6, 12(r1)
+stw r11, 16(r1)
+mfctr r11
+stw r11, 20(r1)
+
+lis r11, IsCoordLink@ha
+lwz r11, IsCoordLink@l(r11)
+cmpwi r11, 0x0
+beq RestoreAndExit_linkcoords
+
+; Call our HLE func
+
+    ; Check if we already have our HLE func addr
+    lis r11, HLE_linkcoords_addr@ha
+    lwz r11, HLE_linkcoords_addr@l(r11)
+    cmpwi r11, 0x0
+    bne Call_HLE_linkcoords
+
+    lis r3, ModuleName@ha
+    addi r3, r3, ModuleName@l
+    lis r4, ModuleHandle@ha
+    addi r4, r4, ModuleHandle@l
+    bla import.coreinit.OSDynLoad_Acquire
+
+    cmpwi r3, 0x0 ; Anything other than 0x0 is an error code.. 
+    bne RestoreAndExit_linkcoords ; in this case it means that the module isn't registered (yet).
+
+    lis r3, ModuleHandle@ha
+    lwz r3, ModuleHandle@l(r3)
+    li r4, 0x0
+    lis r5, HLE_linkcoords@ha
+    addi r5, r5, HLE_linkcoords@l
+    lis r6, HLE_linkcoords_addr@ha
+    addi r6, r6, HLE_linkcoords_addr@l
+    bla import.coreinit.OSDynLoad_FindExport
+
+    Call_HLE_linkcoords:
+
+lis r11, HLE_linkcoords_addr@ha
+lwz r11, HLE_linkcoords_addr@l(r11)
+mtctr r11
+
+; Just in case the HLE isn't present
+cmpwi r11, 0x0
+beq RestoreAndExit_Call_HLE_linkcoords
+
+lwz r4, 4(r1)
+addi r3, r4, 0x50 ; Let's send over r4! That's the point of this whole hook lol.
+bctrl
+
+RestoreAndExit_Call_HLE_linkcoords:
+; Reset IsCoordLink back to 0
+li r3, 0x0
+lis r11, IsCoordLink@ha
+stw r3, IsCoordLink@l(r11)
+
+RestoreAndExit_linkcoords:
+; Restore registers
+lwz r3, 0(r1)
+lwz r4, 4(r1)
+lwz r5, 8(r1)
+lwz r6, 12(r1)
+lwz r11, 20(r1)
+mtctr r11
+lwz r11, 16(r1)
+addi r1, r1, 0x18
+
+
+; Do the instructions we're replacing
+stw r28, -0x20(r11)
+stfs f31, -0x8(r11)
+stw r29, -0x1c(r11)
+mr r28, r3
+stw r0, 0x4(r11)
+
+
+
+
+; Return
+
+addi r1, r1, -0x8
+stw r11, 0(r1)
+mfctr r11
+stw r11, 4(r1)
+
+lis r11, Return_linkcoords@ha
+addi r11, r11, Return_linkcoords@l
+mtctr r11
+
+bctr
+
+
+; Back up registers
+0x03f9d234 = ba ReturnLinkCoordsAddress
+
+; Restore registers
+
+0x03f9d238 = Return_linkcoords:
+0x03f9d238 = lwz r11, 4(r1)
+0x03f9d23c = mtctr r11
+0x03f9d240 = lwz r11, 0(r1)
+0x03f9d244 = addi r1, r1, 0x8
+
 
 ; ----------------------------------------------
