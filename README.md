@@ -9,7 +9,8 @@ It's a coin toss for whether or not your antivirus will detect this as a virus, 
 Simply download a prebuilt binary and run the executable while cemu is on the title select screen. Make sure that the graphics pack is copied to Cemu's graphic packs directory and enabled in Cemu.
 ### Building from Source
 Build the solution with Visual Studio and run the outputted executable. Make sure that the graphics pack is copied to Cemu's graphic packs directory and enabled in Cemu.  
-*Linux Users*: Keep in mind that linux is currently not supported due to usage of windows-only functions for dll injection. Feel free to submit a pull request for linux support.
+*Linux Users*: Keep in mind that linux is currently not supported due to usage of windows-only functions for dll injection. Feel free to submit a pull request for linux support.  
+*Mac Users*: Same as for linux.
 
 ## How it Works
 An assembly patch is applied via a Cemu graphics pack. It replaces a vanilla instruction (which is executed on a regular basis when the game is unpaused) with PPC Assembly that generally corresponds to the following pseudocode:
