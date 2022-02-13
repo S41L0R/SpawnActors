@@ -8,7 +8,7 @@ It's a coin toss for whether or not your antivirus will detect this as a virus, 
 ### From Prebuilt Binary
 Simply download a prebuilt binary and run the executable while cemu is on the title select screen. Make sure that the graphics pack is copied to Cemu's graphic packs directory and enabled in Cemu.
 ### Building from Source
-Build the solution with Visual Studio and run the outputted executable. Make sure that the graphics pack is copied to Cemu's graphic packs directory and enabled in Cemu. 
+Build the solution with Visual Studio and run the outputted executable. Make sure that the graphics pack is copied to Cemu's graphic packs directory and enabled in Cemu.  
 *Linux Users*: Keep in mind that linux is currently not supported due to usage of windows-only functions for dll injection. Feel free to submit a pull request for linux support.
 
 ## How it Works
