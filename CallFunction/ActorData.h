@@ -26,7 +26,7 @@ namespace ActorData {
 		// Enemy_Bokoblin
 		{
 			std::vector<std::string> variants = { "Junior", "Middle", "Senior", "Gold" };
-			std::map<std::string, int> wieldableProfiles = { {"Sword", 1}, {"Lsword", 2}, {"Spear", 2}, {"Bow", 2}, {"Shield", 1} };
+			std::map<std::string, int> wieldableProfiles = { {"Sword", 2}, {"Lsword", 1}, {"Spear", 2}, {"Bow", 2}, {"Shield", 1} };
 			Enemy enemy;
 			enemy.Variants = variants;
 			enemy.WieldableProfiles = wieldableProfiles;

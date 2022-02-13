@@ -6,13 +6,15 @@ struct KeyCodeActor {
 	KeyCodeActor(std::string name) {
 		Name = name;
 	}
-	KeyCodeActor(std::string name, int num, bool randomized) {
+	KeyCodeActor(std::string name, int num, bool actorRandomized, bool weaponsRandomized) {
 		Name = name;
 		Num = num;
-		Randomized = randomized;
+		ActorRandomized = actorRandomized;
+		WeaponsRandomized = weaponsRandomized;
 	}
 
 	std::string Name;
 	int Num = 1;
-	bool Randomized = false;
+	bool ActorRandomized = false;
+	bool WeaponsRandomized = false;
 };

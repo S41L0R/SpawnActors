@@ -187,11 +187,7 @@ void setup(PPCInterpreter_t* hCPU, uint32_t startTrnsData) {
 	if (*memInstance->linkData.PosX == 0.f && *memInstance->linkData.PosY == 0.f && *memInstance->linkData.PosZ == 0.f) {
 		Console::LogPrint(""); // New line
 		Console::LogPrint("Whelp... 0 0 0 Glitch. Restart cemu and try again!");
-		Console::LogPrint("I really need to figure out why this happens...");
-		Console::LogPrint("I could do what LibreVR's Memory Editor does, which is an AOB scan, but the problems I have with that are:");
-		Console::LogPrint("  A. It's really slow");
-		Console::LogPrint("  B. It requires some complicated region finding");
-		Console::LogPrint("What we'll probably end up doing is hooking into the coord init instructions, but we need to find that first.");
+		Console::LogPrint("This happens sometimes; It's completely random, not your fault!");
 	}
 
 	TransferableData trnsData;
@@ -202,6 +198,46 @@ void setup(PPCInterpreter_t* hCPU, uint32_t startTrnsData) {
 	data_mutex.unlock(); //===============================================
 
 	isSetup = true;
+}
+
+std::string getRandomActorVariant(std::string enemyName, ActorData::Enemy* enemyActor) {
+	std::string variant = enemyActor->Variants.at(std::rand() % enemyActor->Variants.size());
+	if (variant != "") {
+		enemyName.append("_");
+		enemyName.append(variant);
+	}
+	return enemyName;
+}
+
+// Handles randomized weapon spawning
+void queueRandomWeapons(QueueActor* queueActor, ActorData::Enemy* enemyActor) {
+	for (int i = 0; i < enemyActor->MaxWeaponSlots; i++) {
+		QueueActor queueWeapon;
+		for (std::map<std::string, ActorData::Weapon>::iterator iter = ActorData::WeaponClasses.begin(); iter != ActorData::WeaponClasses.end(); ++iter) {
+			std::string weaponName = iter->first;
+			std::string weaponProfile = iter->second.profile;
+
+			weaponName.append("_");
+			weaponName.append(iter->second.Variants.at(std::rand() % iter->second.Variants.size()));
+
+			int slotCount = enemyActor->WieldableProfiles[weaponProfile];
+			i = i + slotCount;
+			queueWeapon.Name = weaponName;
+
+			queueWeapon.PosX = (float)*memInstance->linkData.PosX;
+			queueWeapon.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
+			queueWeapon.PosZ = (float)*memInstance->linkData.PosZ;
+
+			//queueActor.Name = name;
+			queue_mutex.lock();
+			queuedActors.push_back(queueWeapon);
+			queue_mutex.unlock();
+			queue_mutex.lock(); ////////////////////////////////////////
+			queuedActors.push_back(*queueActor);
+			queue_mutex.unlock(); //====================================
+
+		}
+	}
 }
 
 void queueActors() {
@@ -218,84 +254,26 @@ void queueActors() {
 			for (KeyCodeActor keyCodeActor : keyCodeMapIter->second) {
 				for (int i = 0; i < keyCodeActor.Num; i++) {
 					QueueActor queueActor;
-					// Set name
-					queueActor.Name = keyCodeActor.Name; // Default
-					if (keyCodeActor.Randomized) {
-						int largestAcceptedNameLength = 0;
+					queueActor.Name = keyCodeActor.Name; // Set actor name - might be changed later with randomization features, though.
 
-						// Sets the variants *I think*
+					// Enemy-specific randomization features
+					if (keyCodeActor.ActorRandomized || keyCodeActor.WeaponsRandomized) {
 						for (std::map<std::string, ActorData::Enemy>::iterator iter = ActorData::EnemyClasses.begin(); iter != ActorData::EnemyClasses.end(); ++iter) {
-							if (keyCodeActor.Name.find(iter->first, 0) == 0) {
+							if (!keyCodeActor.Name.find(iter->first, 0) == 0)
+								continue;
+							ActorData::Enemy enemyActor = iter->second;
+							std::string name = iter->first;
 
-								if (iter->first.length() < largestAcceptedNameLength) // Some optimizations
-									continue;
-								largestAcceptedNameLength = iter->first.length();
+							// Sets actor variants if requested
+							if (keyCodeActor.ActorRandomized) {
+								
+								queueActor.Name = getRandomActorVariant(name, &enemyActor); // Override queue actor name
+							}
 
-								ActorData::Enemy enemyActor = iter->second;
-								std::string name = iter->first;
-								std::string variant = iter->second.Variants.at(std::rand() % iter->second.Variants.size());
-								if (variant != "") {
-									name.append("_");
-									name.append(variant);
-								}
-								queueActor.Name = name;
-								Console::LogPrint(queueActor.Name);
-								int i = enemyActor.MaxWeaponSlots;
-
-								// Handles randomized weapon spawning
-								if (i != 0){
-									while (i <= iter->second.MaxWeaponSlots) {
-										Console::LogPrint(i);
-										QueueActor queueWeapon;
-										for (std::map<std::string, ActorData::Weapon>::iterator iter = ActorData::WeaponClasses.begin(); iter != ActorData::WeaponClasses.end(); ++iter) {
-											std::string weaponName = iter->first;
-											std::string weaponProfile = iter->second.profile;
-
-											weaponName.append("_");
-											weaponName.append(iter->second.Variants.at(std::rand() % iter->second.Variants.size()));
-
-											int slotCount = enemyActor.WieldableProfiles[weaponProfile];
-											i = i + slotCount;
-											queueWeapon.Name = weaponName;
-
-											Console::LogPrint(queueWeapon.Name);
-
-											queueWeapon.PosX = (float)*memInstance->linkData.PosX;
-											queueWeapon.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
-											queueWeapon.PosZ = (float)*memInstance->linkData.PosZ;
-
-											//queueActor.Name = name;
-											queue_mutex.lock();
-											queuedActors.push_back(queueWeapon);
-											queue_mutex.unlock();
-										queue_mutex.lock(); ////////////////////////////////////////
-										queuedActors.push_back(queueActor);
-										queue_mutex.unlock(); //====================================
-
-										}
-									}
-
-								}
+							if (keyCodeActor.WeaponsRandomized) {
+								queueRandomWeapons(&queueActor, &enemyActor);
 							}
 						}
-
-						/*
-						largestAcceptedNameLength = 0;
-						for (std::map<std::string, ActorData::Weapon>::iterator iter = ActorData::WeaponClasses.begin(); iter != ActorData::WeaponClasses.end(); ++iter) {
-							if (keyCodeActor.Name.find(iter->first, 0) == 0) {
-
-								if (iter->first.length() < largestAcceptedNameLength) // Some optimizations
-									continue;
-								largestAcceptedNameLength = iter->first.length();
-
-								std::string name = iter->first;
-								name.append("_");
-								name.append(iter->second.Variants.at(std::rand() % iter->second.Variants.size()));
-
-								queueActor.Name = name;
-							}
-						}
-						*/
 					}
 
 					queueActor.PosX = (float)*memInstance->linkData.PosX;

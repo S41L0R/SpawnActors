@@ -36,7 +36,10 @@ namespace Threads {
 					"'help' - Shows commands\n"
 					"'keycode [key] [ [num] [actorname] ](s)' - Registers keycode for actor spawning\n"
 					"'rmkeycode [key]' - Unregisters keycode for actor spawning\n"
-					"'pos' - Print link's pos"
+					"'pos' - Print link's pos\n"
+					"Note:\n"
+					"Enemy names prefixed with: \\ will have their variants randomized.\n"
+					"Enemy names prefixed with / will be spawned with random, compatible weapons."
 				);
 			}
 			else if (command[0] == "keycode") {
@@ -44,18 +47,23 @@ namespace Threads {
 				if (command.size() >= 4) {
 					char keycode = std::toupper(command[1][0]);
 
-
 					std::vector<KeyCodeActor> actVec;
 					int actorCount = (command.size() - 2) / 2;
 
 					for (int i = 0; i < command.size() - 2; i += 2) {
 						int num = std::stoi(command[i + 2]);
 
-						bool randomized = (command[i + 3][0] == '\\');
-						if (randomized)
-							command[i + 3].erase(0, 1);
+						bool actorRandomized = false;
+						bool weaponsRandomized = false;
+						actorRandomized = (command[i + 3][0] == '\\') || (command[i + 3][1] == '\\');
+						weaponsRandomized = (command[i + 3][0] == '/') || (command[i + 3][1] == '/');
+						if (actorRandomized && weaponsRandomized)
+							command[i + 3].erase(0, 2);
+						else
+							if (actorRandomized || weaponsRandomized)
+								command[i + 3].erase(0, 1);
 
-						actVec.push_back(KeyCodeActor(command[i + 3], num, randomized));
+						actVec.push_back(KeyCodeActor(command[i + 3], num, actorRandomized, weaponsRandomized));
 					}
 
 
@@ -67,7 +75,7 @@ namespace Threads {
 					Console::LogPrint("Keycode added succesfully");
 				}
 				else {
-					Console::LogPrint("Format: keycode [key] [actorname(s)]");
+					Console::LogPrint("Format: keycode [key] [num] [actorname(s)]");
 				}
 				keycode_mutex->unlock();
 			}
@@ -134,11 +142,17 @@ namespace ConsoleProcessor {
 				for (int i = 0; i < command.size() - 1; i += 2) {
 					int num = std::stoi(command[i + 1]);
 
-					bool randomized = (command[i + 2][0] == '\\');
-					if (randomized)
-						command[i + 2].erase(0, 1);
+					bool actorRandomized = false;
+					bool weaponsRandomized = false;
+					actorRandomized = (command[i + 2][0] == '\\') || (command[i + 2][1] == '\\');
+					weaponsRandomized = (command[i + 2][0] == '/') || (command[i + 2][1] == '/');
+					if (actorRandomized && weaponsRandomized)
+						command[i + 2].erase(0, 2);
+					else
+						if (actorRandomized || weaponsRandomized)
+							command[i + 2].erase(0, 1);
 
-					actVec.push_back(KeyCodeActor(command[i + 2], num, randomized));
+					actVec.push_back(KeyCodeActor(command[i + 2], num, actorRandomized, weaponsRandomized));
 				}
 
 				if (keyCodeMap->find(keycode) != keyCodeMap->end()) // Remove last version if it exists
