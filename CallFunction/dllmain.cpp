@@ -485,10 +485,12 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		// Set up keycodes set by file
 		ConsoleProcessor::registerPresetKeycodes();
 
+		UIProcessor::keyCodeMap = &keyCodeMap;
+
 		// Set up our console thread
 		CreateThread(0, 0, Threads::ConsoleThread, hModule, 0, 0); // This isn't migrated to Threads because it's temporary
 
-		//CreateThread(0, 0, Threads::UIThread, hModule, 0, 0);
+		CreateThread(0, 0, Threads::UIThread, hModule, 0, 0);
 		break;
     case DLL_THREAD_ATTACH:
 		break;

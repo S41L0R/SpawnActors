@@ -9,6 +9,16 @@
 
 #include <iostream>
 
+namespace UIProcessor {
+    std::map<char, std::vector<KeyCodeActor>>* keyCodeMap = nullptr;
+
+    char inputKeycode[1] = "";
+    char inputActorName[128] = "";
+    int inputNum = 1;
+    bool inputActorRandomized = false;
+    bool inputWeaponsRandomized = false;
+}
+
 void ShowMenu(GLFWwindow* Window)
 {
     glfwSetWindowAttrib(Window, GLFW_MOUSE_PASSTHROUGH, GLFW_FALSE);
@@ -30,17 +40,74 @@ static void glfw_error_callback(int error, const char* description)
 /// This is the actual ImGui drawing code
 /// </summary>
 void DrawItems() {
-    char  keycode[128] = "";
-    static int currentActor = 0;
-    const char* actors[] = {"Enemy_Guardian_A", "Enemy_Guardian_B", "Enemy_Guardian_C"};
+    
     ImGui::Begin("Actor-Keycode Mapping");
-    ImGui::InputTextWithHint("Keycode", "Keycode", keycode, IM_ARRAYSIZE(keycode));
-    ImGui::Combo("Actors", &currentActor, actors, IM_ARRAYSIZE(actors));
-    ImGui::Text(keycode);
-    ImGui::Text(actors[currentActor]);
+
+    
+    ImGui::InputTextWithHint("Keycode", "Keycode", UIProcessor::inputKeycode, 2); // Idk why 2 instead of 1, but ensures that only one char can be entered
+    ImGui::InputTextWithHint("Actor Name", "Actor Name", UIProcessor::inputActorName, IM_ARRAYSIZE(UIProcessor::inputActorName));
+    ImGui::SliderInt("Num", &UIProcessor::inputNum, 1, 100);
+    ImGui::Checkbox("Variant Randomized", &UIProcessor::inputActorRandomized);
+    ImGui::Checkbox("Weapons Randomized", &UIProcessor::inputWeaponsRandomized);
+    if (ImGui::Button("Add Actor") && std::strcmp(UIProcessor::inputKeycode, "") && std::strcmp(UIProcessor::inputActorName, "")) {
+        std::vector<KeyCodeActor> actVec;
+        actVec.push_back(KeyCodeActor(UIProcessor::inputActorName, UIProcessor::inputNum, UIProcessor::inputActorRandomized, UIProcessor::inputWeaponsRandomized));
+        if (UIProcessor::keyCodeMap->count(std::toupper(UIProcessor::inputKeycode[0])) == 0) {
+            UIProcessor::keyCodeMap->insert({ std::toupper(UIProcessor::inputKeycode[0]), actVec });
+        }
+        else {
+            std::vector<KeyCodeActor>* curentActVec = &UIProcessor::keyCodeMap->at(std::toupper(UIProcessor::inputKeycode[0]));
+            
+            curentActVec->insert(curentActVec->end(), actVec.begin(), actVec.end());
+        }
+    }
+
+    std::vector<char> keycodesToRemove;
+    for (std::pair<char, std::vector<KeyCodeActor>> pair : *UIProcessor::keyCodeMap) {
+        std::string key(1, pair.first);
+
+        ImGui::Text(key.c_str());
+
+        ImGui::Indent(25);
+
+        std::vector<int> actIndicesToRemove;
+        unsigned int actorIdx = 0;
+        for (KeyCodeActor act : pair.second) {
+            if (ImGui::Button(("Remove##" + key + std::to_string(actorIdx)).c_str())) {
+                actIndicesToRemove.push_back(actorIdx);
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::BeginTable((key + act.Name).c_str(), 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0); ImGui::Text("Actor Name"); ImGui::TableSetColumnIndex(1); ImGui::Text(act.Name.c_str());
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0); ImGui::Text("Num"); ImGui::TableSetColumnIndex(1); ImGui::Text(std::to_string(act.Num).c_str());
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0); ImGui::Text("Variant Randomized"); ImGui::TableSetColumnIndex(1); ImGui::Text(std::to_string(act.ActorRandomized).c_str());
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0); ImGui::Text("Weapons Randomized"); ImGui::TableSetColumnIndex(1); ImGui::Text(std::to_string(act.WeaponsRandomized).c_str());
+                
+                ImGui::EndTable();
+            }
+            actorIdx++;
+        }
+        for (int idx : actIndicesToRemove) // Apply actor deletions
+            UIProcessor::keyCodeMap->at(pair.first).erase(UIProcessor::keyCodeMap->at(pair.first).begin() + idx);
+        if (pair.second.size() < 1)
+            keycodesToRemove.push_back(pair.first);
+
+        ImGui::Unindent();
+    }
+
     ImGui::End();
 
+#ifndef NDEBUG
     ImGui::ShowDemoWindow();
+#endif
+    for (char keycode : keycodesToRemove) // Apply keycode deletions
+        UIProcessor::keyCodeMap->erase(keycode);
 }
 
 namespace Threads {
