@@ -441,20 +441,11 @@ void mainFn(PPCInterpreter_t* hCPU) {
 	mainFn(hCPU, hCPU->gpr[3], hCPU->gpr[4], hCPU->gpr[5]);
 }
 
-void setLinkCoordsAddr(PPCInterpreter_t* hCPU) {
-	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
-	memInstance->linkData.PosX = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + hCPU->gpr[3] + 0x0); // oh wait,
-	memInstance->linkData.PosY = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + hCPU->gpr[3] + 0x4); // it's
-	memInstance->linkData.PosZ = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + hCPU->gpr[3] + 0x8);
-	Console::LogPrint(std::to_string((float)*memInstance->linkData.PosX));
-	Console::LogPrint(std::to_string(hCPU->gpr[3]));
-}
 
 void init() {
     osLib_registerHLEFunctionType osLib_registerHLEFunction = (osLib_registerHLEFunctionType)GetProcAddress(GetModuleHandleA("Cemu.exe"), "osLib_registerHLEFunction");
 	osLib_registerHLEFunction("spawnactors", "fnCallMain", static_cast<void (*) (PPCInterpreter_t*)>(&mainFn)); // Give our assembly patch something to hook into
 	osLib_registerHLEFunction("spawnactors", "logFn", &logFn); // And basic logging tools
-	osLib_registerHLEFunction("spawnactors", "setLinkCoordsAddr", &setLinkCoordsAddr); // As well as a func for giving link coords to
 }
 
 
@@ -497,7 +488,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		UIProcessor::keyCodeMap = &keyCodeMap;
 
 		// Set up our console thread
-		CreateThread(0, 0, Threads::ConsoleThread, hModule, 0, 0);
+		CreateThread(0, 0, Threads::ConsoleThread, hModule, 0, 0); // This isn't migrated to Threads because it's temporary
 
 		CreateThread(0, 0, Threads::UIThread, hModule, 0, 0);
 		break;
