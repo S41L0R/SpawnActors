@@ -12,6 +12,8 @@ class MemoryInstance {
 public:
 	MemoryInstance(HMODULE cemuModuleHandle);
 
+	void RuntimeInit();
+
 	template <typename T>
 	static void memory_swapEndianness(T& val) {
 		union U {

@@ -2,11 +2,11 @@
 
 #include <string>
 
-struct KeyCodeActor {
-	KeyCodeActor(std::string name) {
+struct TriggeredActor {
+	TriggeredActor(std::string name) {
 		Name = name;
 	}
-	KeyCodeActor(std::string name, int num, bool actorRandomized, bool weaponsRandomized) {
+	TriggeredActor(std::string name, int num, bool actorRandomized, bool weaponsRandomized) {
 		Name = name;
 		Num = num;
 		ActorRandomized = actorRandomized;

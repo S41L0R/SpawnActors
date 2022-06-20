@@ -18,7 +18,7 @@ namespace ConsoleProcessor {
 
 	extern MemoryInstance* memInstance;
 	extern std::shared_mutex* keycode_mutex;
-	extern std::map<char, std::vector<KeyCodeActor>>* keyCodeMap;
+	extern std::map<char, std::vector<TriggeredActor>>* keyCodeMap;
 	extern std::map<char, bool>* prevKeyStateMap;
 	extern bool* isSetup;
 }

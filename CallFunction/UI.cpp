@@ -7,16 +7,29 @@
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 
+#include "nlohmann/json.hpp"
+
 #include <iostream>
+#include <fstream>
+#include <filesystem>
 
 namespace UIProcessor {
-    std::map<char, std::vector<KeyCodeActor>>* keyCodeMap = nullptr;
+    std::map<char, std::vector<TriggeredActor>>* keyCodeMap = nullptr;
+    std::vector<TriggeredActor>* damageActors = nullptr;
+    std::map<char, bool>* prevKeyStateMap = nullptr;
 
-    char inputKeycode[1] = "";
-    char inputActorName[128] = "";
-    int inputNum = 1;
-    bool inputActorRandomized = false;
-    bool inputWeaponsRandomized = false;
+    char keycodeActor_inputKeycode[2] = "";
+    char keycodeActor_inputActorName[128] = "";
+    int keycodeActor_inputNum = 1;
+    bool keycodeActor_inputActorRandomized = false;
+    bool keycodeActor_inputWeaponsRandomized = false;
+
+    char damageActor_inputActorName[128] = "";
+    int damageActor_inputNum = 1;
+    bool damageActor_inputActorRandomized = false;
+    bool damageActor_inputWeaponsRandomized = false;
+
+    char savePath[128] = "";
 }
 
 void ShowMenu(GLFWwindow* Window)
@@ -36,34 +49,31 @@ static void glfw_error_callback(int error, const char* description)
 }
 
 
-/// <summary>
-/// This is the actual ImGui drawing code
-/// </summary>
-void DrawItems() {
-    
+void DrawKeycodeActorWindow() {
     ImGui::Begin("Actor-Keycode Mapping");
 
-    
-    ImGui::InputTextWithHint("Keycode", "Keycode", UIProcessor::inputKeycode, 2); // Idk why 2 instead of 1, but ensures that only one char can be entered
-    ImGui::InputTextWithHint("Actor Name", "Actor Name", UIProcessor::inputActorName, IM_ARRAYSIZE(UIProcessor::inputActorName));
-    ImGui::SliderInt("Num", &UIProcessor::inputNum, 1, 100);
-    ImGui::Checkbox("Variant Randomized", &UIProcessor::inputActorRandomized);
-    ImGui::Checkbox("Weapons Randomized", &UIProcessor::inputWeaponsRandomized);
-    if (ImGui::Button("Add Actor") && std::strcmp(UIProcessor::inputKeycode, "") && std::strcmp(UIProcessor::inputActorName, "")) {
-        std::vector<KeyCodeActor> actVec;
-        actVec.push_back(KeyCodeActor(UIProcessor::inputActorName, UIProcessor::inputNum, UIProcessor::inputActorRandomized, UIProcessor::inputWeaponsRandomized));
-        if (UIProcessor::keyCodeMap->count(std::toupper(UIProcessor::inputKeycode[0])) == 0) {
-            UIProcessor::keyCodeMap->insert({ std::toupper(UIProcessor::inputKeycode[0]), actVec });
+
+    ImGui::InputTextWithHint("Keycode##keycodeActor", "Keycode", UIProcessor::keycodeActor_inputKeycode, 2); // Idk why 2 instead of 1, but ensures that only one char can be entered
+    ImGui::InputTextWithHint("Actor Name##keycodeActor", "Actor Name", UIProcessor::keycodeActor_inputActorName, IM_ARRAYSIZE(UIProcessor::keycodeActor_inputActorName));
+    ImGui::SliderInt("Num##keycodeActor", &UIProcessor::keycodeActor_inputNum, 1, 100);
+    ImGui::Checkbox("Variant Randomized##keycodeActor", &UIProcessor::keycodeActor_inputActorRandomized);
+    ImGui::Checkbox("Weapons Randomized##keycodeActor", &UIProcessor::keycodeActor_inputWeaponsRandomized);
+    if (ImGui::Button("Add Actor##keycodeActor") && std::strcmp(UIProcessor::keycodeActor_inputKeycode, "") && std::strcmp(UIProcessor::keycodeActor_inputActorName, "")) {
+        std::vector<TriggeredActor> actVec;
+        actVec.push_back(TriggeredActor(UIProcessor::keycodeActor_inputActorName, UIProcessor::keycodeActor_inputNum, UIProcessor::keycodeActor_inputActorRandomized, UIProcessor::keycodeActor_inputWeaponsRandomized));
+        if (UIProcessor::keyCodeMap->count(std::toupper(UIProcessor::keycodeActor_inputKeycode[0])) == 0) {
+            UIProcessor::keyCodeMap->insert({ std::toupper(UIProcessor::keycodeActor_inputKeycode[0]), actVec });
+            UIProcessor::prevKeyStateMap->emplace(std::toupper(UIProcessor::keycodeActor_inputKeycode[0]), false);
         }
         else {
-            std::vector<KeyCodeActor>* curentActVec = &UIProcessor::keyCodeMap->at(std::toupper(UIProcessor::inputKeycode[0]));
-            
+            std::vector<TriggeredActor>* curentActVec = &UIProcessor::keyCodeMap->at(std::toupper(UIProcessor::keycodeActor_inputKeycode[0]));
+
             curentActVec->insert(curentActVec->end(), actVec.begin(), actVec.end());
         }
     }
 
     std::vector<char> keycodesToRemove;
-    for (std::pair<char, std::vector<KeyCodeActor>> pair : *UIProcessor::keyCodeMap) {
+    for (std::pair<char, std::vector<TriggeredActor>> pair : *UIProcessor::keyCodeMap) {
         std::string key(1, pair.first);
 
         ImGui::Text(key.c_str());
@@ -72,8 +82,8 @@ void DrawItems() {
 
         std::vector<int> actIndicesToRemove;
         unsigned int actorIdx = 0;
-        for (KeyCodeActor act : pair.second) {
-            if (ImGui::Button(("Remove##" + key + std::to_string(actorIdx)).c_str())) {
+        for (TriggeredActor act : pair.second) {
+            if (ImGui::Button(("Remove##keyCodeActor" + key + std::to_string(actorIdx)).c_str())) {
                 actIndicesToRemove.push_back(actorIdx);
             }
 
@@ -88,7 +98,7 @@ void DrawItems() {
                 ImGui::TableSetColumnIndex(0); ImGui::Text("Variant Randomized"); ImGui::TableSetColumnIndex(1); ImGui::Text(std::to_string(act.ActorRandomized).c_str());
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0); ImGui::Text("Weapons Randomized"); ImGui::TableSetColumnIndex(1); ImGui::Text(std::to_string(act.WeaponsRandomized).c_str());
-                
+
                 ImGui::EndTable();
             }
             actorIdx++;
@@ -101,13 +111,85 @@ void DrawItems() {
         ImGui::Unindent();
     }
 
+    for (char keycode : keycodesToRemove) // Apply keycode deletions
+        UIProcessor::keyCodeMap->erase(keycode);
+
     ImGui::End();
+}
+
+void DrawDamageActorWindow() {
+    ImGui::Begin("Actor-Damage Mapping");
+
+    ImGui::InputTextWithHint("Actor Name##damageActor", "Actor Name", UIProcessor::damageActor_inputActorName, IM_ARRAYSIZE(UIProcessor::keycodeActor_inputActorName));
+    ImGui::SliderInt("Num##damageActor", &UIProcessor::damageActor_inputNum, 1, 100);
+    ImGui::Checkbox("Variant Randomized##damageActor", &UIProcessor::damageActor_inputActorRandomized);
+    ImGui::Checkbox("Weapons Randomized##damageActor", &UIProcessor::damageActor_inputWeaponsRandomized);
+    if (ImGui::Button("Add Actor##damageActor")) {
+        UIProcessor::damageActors->push_back(TriggeredActor(UIProcessor::damageActor_inputActorName, UIProcessor::damageActor_inputNum, UIProcessor::damageActor_inputActorRandomized, UIProcessor::damageActor_inputWeaponsRandomized));
+    }
+
+    ImGui::Indent(25);
+
+    std::vector<int> actIndicesToRemove;
+    unsigned int actorIdx = 0;
+    for (TriggeredActor act : *UIProcessor::damageActors) {
+        if (ImGui::Button(("Remove##damageActor_" + std::to_string(actorIdx)).c_str())) {
+            actIndicesToRemove.push_back(actorIdx);
+        }
+
+
+        ImGui::SameLine();
+
+        if (ImGui::BeginTable(("damage_Actor_" + act.Name).c_str(), 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0); ImGui::Text("Actor Name"); ImGui::TableSetColumnIndex(1); ImGui::Text(act.Name.c_str());
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0); ImGui::Text("Num"); ImGui::TableSetColumnIndex(1); ImGui::Text(std::to_string(act.Num).c_str());
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0); ImGui::Text("Variant Randomized"); ImGui::TableSetColumnIndex(1); ImGui::Text(std::to_string(act.ActorRandomized).c_str());
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0); ImGui::Text("Weapons Randomized"); ImGui::TableSetColumnIndex(1); ImGui::Text(std::to_string(act.WeaponsRandomized).c_str());
+
+            ImGui::EndTable();
+        }
+        actorIdx++;
+    }
+    for (int idx : actIndicesToRemove) // Apply actor deletions
+        UIProcessor::damageActors->erase(UIProcessor::damageActors->begin() + idx);
+
+    ImGui::Unindent();
+
+    ImGui::End();
+}
+
+void DrawLoadSaveWindow() {
+    ImGui::Begin("Save Stuff");
+
+    ImGui::InputText("Path", UIProcessor::savePath, 128);
+
+    if (ImGui::Button("Save")) {
+        UIProcessor::WriteSettings();
+    }
+    if (ImGui::Button("Load")) {
+        UIProcessor::LoadSettings();
+    }
+
+    ImGui::End();
+}
+
+/// <summary>
+/// This is the actual ImGui drawing code
+/// </summary>
+void DrawItems() {
+
+    DrawKeycodeActorWindow();
+    DrawDamageActorWindow();
+    DrawLoadSaveWindow();
+    
 
 #ifndef NDEBUG
     ImGui::ShowDemoWindow();
 #endif
-    for (char keycode : keycodesToRemove) // Apply keycode deletions
-        UIProcessor::keyCodeMap->erase(keycode);
 }
 
 namespace Threads {
@@ -234,5 +316,64 @@ namespace Threads {
         glfwTerminate();
 
         return 0;
+    }
+}
+
+namespace UIProcessor {
+    void WriteSettings()
+    {
+        nlohmann::json saved;
+
+        // Save keycode actors
+        for (std::map<char, std::vector<TriggeredActor>>::iterator iter = keyCodeMap->begin(); iter != keyCodeMap->end(); iter++)
+        {
+            nlohmann::json keyCodeMapping;
+            for (int i = 0; i < iter->second.size(); i++)
+            {
+                keyCodeMapping.push_back({ 
+                    { "Name", iter->second[i].Name }, 
+                    { "Num", iter->second[i].Num }, 
+                    { "ActorRandomized", iter->second[i].ActorRandomized }, 
+                    { "WeaponsRandomized", iter->second[i].WeaponsRandomized } 
+                    });
+            }
+
+            saved["KeyCodeActors"][std::string(1, iter->first)] = keyCodeMapping;
+        }
+        // Save damage actors
+        for (int i = 0; i < damageActors->size(); i++) {
+            saved["DamageActors"].push_back({
+                { "Name", (*damageActors)[i].Name},
+                { "Num", (*damageActors)[i].Num },
+                { "ActorRandomized", (*damageActors)[i].ActorRandomized },
+                { "WeaponsRandomized", (*damageActors)[i].WeaponsRandomized }
+                });
+        }
+
+        // Write file
+        std::ofstream outStream(savePath);
+        outStream << std::setw(4) << saved << std::endl;
+    }
+    void LoadSettings() {
+        if (!std::filesystem::exists(savePath))
+            return;
+        std::ifstream inStream(savePath);
+        nlohmann::json loaded;
+        inStream >> loaded;
+
+        keyCodeMap->clear();
+        for (nlohmann::json::iterator keycodeIter = loaded["KeyCodeActors"].begin(); keycodeIter != loaded["KeyCodeActors"].end(); keycodeIter++) {
+            std::vector<TriggeredActor> actors;
+            for (nlohmann::json::iterator actorIter = keycodeIter.value().begin(); actorIter != keycodeIter.value().end(); actorIter++) {
+                actors.push_back(TriggeredActor(actorIter.value()["Name"], actorIter.value()["Num"], actorIter.value()["ActorRandomized"], actorIter.value()["WeaponsRandomized"]));
+            }
+            keyCodeMap->insert(std::pair(keycodeIter.key()[0], actors));
+            prevKeyStateMap->emplace(keycodeIter.key()[0], false);
+        }
+
+        damageActors->clear();
+        for (nlohmann::json::iterator actorIter = loaded["DamageActors"].begin(); actorIter != loaded["DamageActors"].end(); actorIter++) {
+            damageActors->push_back(TriggeredActor(actorIter.value()["Name"], actorIter.value()["Num"], actorIter.value()["ActorRandomized"], actorIter.value()["WeaponsRandomized"]));
+        }
     }
 }

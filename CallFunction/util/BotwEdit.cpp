@@ -35,18 +35,7 @@ MemoryInstance::MemoryInstance(HMODULE cemuModuleHandle)
 	linkData.VelX = reinterpret_cast<floatBE*>(baseAddr + linkPosOffset + 0xC0);
 	linkData.VelY = reinterpret_cast<floatBE*>(baseAddr + linkPosOffset + 0xC4);
 	linkData.VelZ = reinterpret_cast<floatBE*>(baseAddr + linkPosOffset + 0xC8);
-	// Health tends to appear in one of two locations.
-	// Until someone explains to me how to hook stuff, I'm gonna stick with this bad solution.
-	uint8_t health1;
-	uint8_t health2;
-	memory_readMemory(0x430216FB, &health1);
-	memory_readMemory(0x43021ED7, &health2);
-	if (health1 > health2) {
-		linkData.Health = reinterpret_cast<uint8_t*>(baseAddr + 0x430216FB);
-	}
-	else {
-		linkData.Health = reinterpret_cast<uint8_t*>(baseAddr + 0x43021ED7);
-	}
+	
 	linkData.Stamina = reinterpret_cast<floatBE*>(baseAddr + 0x41C132A8);
 	// Again, dual location strat
 	// Kind of bad, but it works for now
@@ -76,6 +65,21 @@ MemoryInstance::MemoryInstance(HMODULE cemuModuleHandle)
 	gameData.TimeOfDay = reinterpret_cast<floatBE*>(baseAddr + 0xA00AF878);
 
 	*/
+}
+
+void MemoryInstance::RuntimeInit() {
+	// Health tends to appear in one of two locations.
+	// TODO: Proper hook
+	uint8_t health1;
+	uint8_t health2;
+	memory_readMemory(0x430216FB, &health1);
+	memory_readMemory(0x43021ED7, &health2);
+	if (health1 > health2) {
+		linkData.Health = reinterpret_cast<uint8_t*>(baseAddr + 0x430216FB);
+	}
+	else {
+		linkData.Health = reinterpret_cast<uint8_t*>(baseAddr + 0x43021ED7);
+	}
 }
 
 

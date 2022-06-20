@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <shared_mutex>
+#include <random>
 
 #include "util/BotwEdit.h"
 #include "UI.h"
@@ -103,7 +104,8 @@ struct QueueActor {
 // - Feel free to expand / change -
 // Note: This does not take into account stuff like actually setting desired params.
 // ---------------------------------------------------------------------------------
-std::map<char, std::vector<KeyCodeActor>> keyCodeMap;
+std::map<char, std::vector<TriggeredActor>> keyCodeMap;
+std::vector<TriggeredActor> damageActors;
 
 std::shared_mutex keycode_mutex;
 std::shared_mutex queue_mutex;
@@ -240,10 +242,12 @@ void queueRandomWeapons(QueueActor* queueActor, ActorData::Enemy* enemyActor) {
 	}
 }
 
+uint8_t lastHealth = 0xff;
 void queueActors() {
 	keycode_mutex.lock();
+
 	// Basic key press logic to make sure holding down doesn't spam triggers
-	for (std::map<char, std::vector<KeyCodeActor>>::iterator keyCodeMapIter = keyCodeMap.begin(); keyCodeMapIter != keyCodeMap.end(); ++keyCodeMapIter) {
+	for (std::map<char, std::vector<TriggeredActor>>::iterator keyCodeMapIter = keyCodeMap.begin(); keyCodeMapIter != keyCodeMap.end(); ++keyCodeMapIter) {
 		char key = keyCodeMapIter->first;
 
 		bool keyPressed = false;
@@ -251,7 +255,7 @@ void queueActors() {
 			keyPressed = true;
 
 		if (keyPressed && !prevKeyStateMap.find(keyCodeMapIter->first)->second) { // Make sure the key is pressed this frame and wasn't last frame
-			for (KeyCodeActor keyCodeActor : keyCodeMapIter->second) {
+			for (TriggeredActor keyCodeActor : keyCodeMapIter->second) {
 				for (int i = 0; i < keyCodeActor.Num; i++) {
 					QueueActor queueActor;
 					queueActor.Name = keyCodeActor.Name; // Set actor name - might be changed later with randomization features, though.
@@ -405,6 +409,7 @@ void mainFn(PPCInterpreter_t* hCPU, uint32_t startTrnsData, uint32_t startRingBu
 
 	if (!isSetup) {
 		setup(hCPU, startTrnsData);
+		memInstance->RuntimeInit();
 		return;
 	}
 
@@ -441,11 +446,57 @@ void mainFn(PPCInterpreter_t* hCPU) {
 	mainFn(hCPU, hCPU->gpr[3], hCPU->gpr[4], hCPU->gpr[5]);
 }
 
+void onDamage(PPCInterpreter_t* hCPU) {
+	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
+	//memInstance->linkData.Health = (uint8_t*)(memInstance->baseAddr + hCPU->gpr[28]);
+
+	TriggeredActor act = damageActors.at((size_t)((static_cast <float>(std::rand())/static_cast<float> (RAND_MAX)) * damageActors.size()));
+
+
+	//for (std::vector<TriggeredActor>::iterator damageActorsIter = damageActors.begin(); damageActorsIter != damageActors.end(); ++damageActorsIter) {
+		for (int i = 0; i < act.Num; i++) {
+			QueueActor queueActor;
+			queueActor.Name = act.Name;
+
+			// Enemy-specific randomization features
+			if (act.ActorRandomized || act.WeaponsRandomized) {
+				for (std::map<std::string, ActorData::Enemy>::iterator iter = ActorData::EnemyClasses.begin(); iter != ActorData::EnemyClasses.end(); ++iter) {
+					if (!act.Name.find(iter->first, 0) == 0)
+						continue;
+					ActorData::Enemy enemyActor = iter->second;
+					std::string name = iter->first;
+
+					// Sets actor variants if requested
+					if (act.ActorRandomized) {
+
+						queueActor.Name = getRandomActorVariant(name, &enemyActor); // Override queue actor name
+					}
+
+					if (act.WeaponsRandomized) {
+						queueRandomWeapons(&queueActor, &enemyActor);
+					}
+				}
+			}
+
+			queueActor.PosX = (float)*memInstance->linkData.PosX;
+			queueActor.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
+			queueActor.PosZ = (float)*memInstance->linkData.PosZ;
+
+			queue_mutex.lock(); ////////////////////////////////////////
+			queuedActors.push_back(queueActor);
+			queue_mutex.unlock(); //====================================
+		}
+	//}
+}
+
 
 void init() {
     osLib_registerHLEFunctionType osLib_registerHLEFunction = (osLib_registerHLEFunctionType)GetProcAddress(GetModuleHandleA("Cemu.exe"), "osLib_registerHLEFunction");
 	osLib_registerHLEFunction("spawnactors", "fnCallMain", static_cast<void (*) (PPCInterpreter_t*)>(&mainFn)); // Give our assembly patch something to hook into
+	osLib_registerHLEFunction("spawnactors", "fnOnDamage", static_cast<void (*) (PPCInterpreter_t*)>(&onDamage)); // Give our assembly patch something to hook into
 	osLib_registerHLEFunction("spawnactors", "logFn", &logFn); // And basic logging tools
+
+	std::srand(static_cast<unsigned int>(std::time(nullptr)));
 }
 
 
@@ -486,6 +537,8 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		ConsoleProcessor::registerPresetKeycodes();
 
 		UIProcessor::keyCodeMap = &keyCodeMap;
+		UIProcessor::prevKeyStateMap = &prevKeyStateMap;
+		UIProcessor::damageActors = &damageActors;
 
 		// Set up our console thread
 		CreateThread(0, 0, Threads::ConsoleThread, hModule, 0, 0); // This isn't migrated to Threads because it's temporary

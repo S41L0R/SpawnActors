@@ -47,7 +47,7 @@ namespace Threads {
 				if (command.size() >= 4) {
 					char keycode = std::toupper(command[1][0]);
 
-					std::vector<KeyCodeActor> actVec;
+					std::vector<TriggeredActor> actVec;
 					int actorCount = (command.size() - 2) / 2;
 
 					for (int i = 0; i < command.size() - 2; i += 2) {
@@ -63,7 +63,7 @@ namespace Threads {
 							if (actorRandomized || weaponsRandomized)
 								command[i + 3].erase(0, 1);
 
-						actVec.push_back(KeyCodeActor(command[i + 3], num, actorRandomized, weaponsRandomized));
+						actVec.push_back(TriggeredActor(command[i + 3], num, actorRandomized, weaponsRandomized));
 					}
 
 
@@ -107,7 +107,7 @@ namespace ConsoleProcessor {
 
 	MemoryInstance* memInstance = nullptr;
 	std::shared_mutex* keycode_mutex = nullptr;
-	std::map<char, std::vector<KeyCodeActor>>* keyCodeMap = nullptr;
+	std::map<char, std::vector<TriggeredActor>>* keyCodeMap = nullptr;
 	std::map<char, bool>* prevKeyStateMap = nullptr;
 	bool* isSetup = nullptr;
 
@@ -136,7 +136,7 @@ namespace ConsoleProcessor {
 				char keycode = std::toupper(command[0][0]);
 
 
-				std::vector<KeyCodeActor> actVec;
+				std::vector<TriggeredActor> actVec;
 				int actorCount = (command.size() - 1) / 2;
 
 				for (int i = 0; i < command.size() - 1; i += 2) {
@@ -152,7 +152,7 @@ namespace ConsoleProcessor {
 						if (actorRandomized || weaponsRandomized)
 							command[i + 2].erase(0, 1);
 
-					actVec.push_back(KeyCodeActor(command[i + 2], num, actorRandomized, weaponsRandomized));
+					actVec.push_back(TriggeredActor(command[i + 2], num, actorRandomized, weaponsRandomized));
 				}
 
 				if (keyCodeMap->find(keycode) != keyCodeMap->end()) // Remove last version if it exists

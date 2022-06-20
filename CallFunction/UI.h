@@ -15,5 +15,10 @@ namespace Threads {
 }
 
 namespace UIProcessor {
-	extern std::map<char, std::vector<KeyCodeActor>>* keyCodeMap;
+	extern std::map<char, std::vector<TriggeredActor>>* keyCodeMap;
+	extern std::map<char, bool>* prevKeyStateMap;
+	extern std::vector<TriggeredActor>* damageActors;
+	
+	void WriteSettings();
+	void LoadSettings();
 }
