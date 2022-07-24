@@ -48,25 +48,114 @@ public:
 		memcpy((void*)(offset + baseAddr), (void*)&value, sizeof(T));
 	}
 	
-	template <size_t L>
-	size_t memory_aobScan(uint8_t(&scanData)[L], size_t startOffset, size_t endOffset) {
-		size_t endAddr = baseAddr + endOffset;
-		int thing = sizeof(scanData);
-		for (int addr = startOffset; addr < endOffset; addr = addr + 0x1) {
-			uint8_t memorySegment[sizeof(scanData)];
-			memory_readMemory(addr, &memorySegment);
-			bool matches = true;
-			for (int i = 0; i < sizeof(scanData); i++) {
-				if (memorySegment[i] != scanData[i]) {
-					matches = false;
+	uint64_t memory_aobScan(std::vector<int> signature, int region = 0, uint64_t regionOffset = 0, bool multiple = false, bool multipleRegions = false, uint64_t regionMaxOffset = 0)
+	{
+
+		SYSTEM_INFO si;
+		GetSystemInfo(&si);
+
+		uint64_t startAddress = baseAddr;
+		uint64_t endAddress = (uint64_t)(si.lpMaximumApplicationAddress);
+
+		MEMORY_BASIC_INFORMATION mbi{ 0 };
+		DWORD protectflags = (PAGE_GUARD | PAGE_NOCACHE | PAGE_NOACCESS);
+
+		int contador = 1;
+		for (uint64_t i = startAddress; i < endAddress - signature.size();) {
+			if (VirtualQuery((LPCVOID)i, &mbi, sizeof(mbi))) {
+				if (mbi.Protect & protectflags || !(mbi.State & MEM_COMMIT)) {
+					i += mbi.RegionSize;
+
+					contador++;
+					continue; // if bad adress then dont read from it
+				}
+
+				if (region != 0 && contador < region)
+				{
+					i += mbi.RegionSize;
+					contador++;
+					continue;
+				}
+
+				if (contador > region && region != 0 && !multipleRegions)
+				{
 					break;
 				}
-			}
-			if (matches) {
-				return addr;
+
+
+				//get last '?' position in pattern and use it to calculate the max shift value.
+				//the last position in the pattern should never be a '?' -> we do not bother checking it
+				uint64_t maxShift = signature.size() - 1;
+				uint64_t maxIndex = signature.size() - 2;
+				uint64_t wildCardIndex = 0;
+				for (uint64_t i = 0; i < maxIndex + 1; i++) {
+					if (signature.at(i) == -1) {
+						maxShift = maxIndex - i;
+						wildCardIndex = i;
+					}
+				}
+
+				//initialize the shift table
+				uint64_t shiftTable[256];
+				for (uint64_t i = 0; i <= 255; i++) {
+					shiftTable[i] = maxShift;
+				}
+
+
+				//fill shiftTable
+				//forgot this in the video: Because max shift should always be '?' we only update the shift table for bytes to the right of the last '?'
+				for (uint64_t i = wildCardIndex + 1; i < maxIndex; i++) {
+					shiftTable[signature.at(i)] = maxIndex - i;
+				}
+
+
+				uint64_t startingAddress = 0;
+				uint64_t endAddress = mbi.RegionSize - signature.size();
+
+				if (region != 0 && regionOffset != 0)
+				{
+					startingAddress = regionOffset;
+				}
+
+				if (region != 0 && regionMaxOffset != 0)
+				{
+					if (regionMaxOffset < endAddress)
+						endAddress = regionMaxOffset;
+				}
+
+				for (uint64_t currentIndex = startingAddress; currentIndex < endAddress;) {
+
+					for (uint64_t sigIndex = maxIndex; sigIndex >= 0; sigIndex--) {
+						byte reading = *(byte*)((uint64_t)mbi.BaseAddress + currentIndex + sigIndex);
+
+						if (reading != signature.at(sigIndex) && signature.at(sigIndex) != -1) {
+							currentIndex += shiftTable[reading];
+							break;
+						}
+						else if (sigIndex == 0) {
+
+							if (signature.at(signature.size() - 1) != *(byte*)((uint64_t)mbi.BaseAddress + currentIndex + signature.size() - 1))
+							{
+								currentIndex += 1;
+								break;
+							}
+
+							return (uint64_t)mbi.BaseAddress + currentIndex;
+
+						}
+					}
+				}
+
+
+				if (region != 0 && contador == region && !multipleRegions)
+				{
+					break;
+				}
+
+				i = (uint64_t)mbi.BaseAddress + mbi.RegionSize;
 			}
 		}
-		return 0;
+		return NULL;
 	}
 	
 	/*

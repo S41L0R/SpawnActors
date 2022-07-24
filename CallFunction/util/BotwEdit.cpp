@@ -8,6 +8,8 @@
 #include <array>
 #include <algorithm>
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 
 
 struct LinkData {
@@ -22,7 +24,6 @@ MemoryInstance::MemoryInstance(HMODULE cemuModuleHandle)
 	memory_getBaseType memory_getBase = (memory_getBaseType)GetProcAddress(cemuModuleHandle, "memory_getBase");
 
 	baseAddr = (uint64_t)memory_getBase();
-
 	/* We don't need this junk:
 
 	// Init linkData
@@ -80,6 +81,16 @@ void MemoryInstance::RuntimeInit() {
 	else {
 		linkData.Health = reinterpret_cast<uint8_t*>(baseAddr + 0x43021ED7);
 	}
+
+	std::vector<int> coordAob = { 0xff, 0xff, 0xff, 0xf1, 0x3f, -1, -1, -1, 0x80, 0x00, -1, -1, 0x11, -1, -1, -1, 0x10, 0xdf, -1, -1, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3f, 0x80 };
+	uint64_t coordAddr = memory_aobScan(coordAob);
+	linkData.PosX = reinterpret_cast<floatBE*>(coordAddr + 0xb4 + 0x0);
+	linkData.PosY = reinterpret_cast<floatBE*>(coordAddr + 0xb4 + 0x4);
+	linkData.PosZ = reinterpret_cast<floatBE*>(coordAddr + 0xb4 + 0x8);
+	std::stringstream stream;
+	stream << std::hex << coordAddr;
+	std::string result(stream.str());
+	Console::LogPrint(result);
 }
 
 

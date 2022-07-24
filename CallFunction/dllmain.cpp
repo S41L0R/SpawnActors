@@ -180,11 +180,6 @@ void logFn(PPCInterpreter_t* hCPU) {
 void setup(PPCInterpreter_t* hCPU, uint32_t startTrnsData) {
 	Console::LogPrint("It looks like you've correctly set up SpawnActors.");
 
-	uint32_t linkPosOffset = 0x113444F0;
-	memInstance->linkData.PosX = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x50); // oh wait,
-	memInstance->linkData.PosY = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x54); // it's
-	memInstance->linkData.PosZ = reinterpret_cast<MemoryInstance::floatBE*>(memInstance->baseAddr + linkPosOffset + 0x58); // inconsistent
-
 	// Realistically, no one's gonna be at *exactly* 0 0 0
 	if (*memInstance->linkData.PosX == 0.f && *memInstance->linkData.PosY == 0.f && *memInstance->linkData.PosZ == 0.f) {
 		Console::LogPrint(""); // New line
@@ -408,8 +403,8 @@ void mainFn(PPCInterpreter_t* hCPU, uint32_t startTrnsData, uint32_t startRingBu
 	//Console::LogPrint((float)*pos);
 
 	if (!isSetup) {
-		setup(hCPU, startTrnsData);
 		memInstance->RuntimeInit();
+		setup(hCPU, startTrnsData);
 		return;
 	}
 
