@@ -445,6 +445,9 @@ void onDamage(PPCInterpreter_t* hCPU) {
 	hCPU->instructionPointer = hCPU->sprNew.LR; // Tell it where to return to - REQUIRED
 	//memInstance->linkData.Health = (uint8_t*)(memInstance->baseAddr + hCPU->gpr[28]);
 
+	if (damageActors.size() == 0)
+		return;
+
 	TriggeredActor act = damageActors.at((size_t)((static_cast <float>(std::rand())/static_cast<float> (RAND_MAX)) * damageActors.size()));
 
 
