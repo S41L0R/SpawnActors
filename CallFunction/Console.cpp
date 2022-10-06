@@ -63,7 +63,7 @@ namespace Threads {
 							if (actorRandomized || weaponsRandomized)
 								command[i + 3].erase(0, 1);
 
-						actVec.push_back(TriggeredActor(command[i + 3], num, actorRandomized, weaponsRandomized));
+						actVec.push_back(TriggeredActor(command[i + 3], 0.f, 5.f, 0.f, true, num, actorRandomized, weaponsRandomized));
 					}
 
 
@@ -152,7 +152,7 @@ namespace ConsoleProcessor {
 						if (actorRandomized || weaponsRandomized)
 							command[i + 2].erase(0, 1);
 
-					actVec.push_back(TriggeredActor(command[i + 2], num, actorRandomized, weaponsRandomized));
+					actVec.push_back(TriggeredActor(command[i + 2], num, 0.f, 5.f, 0.f, true, actorRandomized, weaponsRandomized));
 				}
 
 				if (keyCodeMap->find(keycode) != keyCodeMap->end()) // Remove last version if it exists

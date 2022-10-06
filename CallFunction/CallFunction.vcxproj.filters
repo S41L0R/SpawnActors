@@ -72,7 +72,7 @@
     <ClInclude Include="Console.h">
       <Filter>Source Files\Threads</Filter>
     </ClInclude>
-    <ClInclude Include="KeyCodeActor.h">
+    <ClInclude Include="TriggeredActor.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

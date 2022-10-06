@@ -2,6 +2,8 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <iomanip>
+#include <sstream>
 
 namespace ActorData {
 

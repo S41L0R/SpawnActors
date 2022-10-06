@@ -13,19 +13,34 @@
 #include <fstream>
 #include <filesystem>
 
+#define NOMINMAX // Because cpp is stupid
+#undef min // Because the last thing doesn't work.
+#undef max // Cpp is stupid.
+
 namespace UIProcessor {
     std::map<char, std::vector<TriggeredActor>>* keyCodeMap = nullptr;
     std::vector<TriggeredActor>* damageActors = nullptr;
     std::map<char, bool>* prevKeyStateMap = nullptr;
+    MemoryInstance::floatBE* xPlayerPos = nullptr;
+    MemoryInstance::floatBE* yPlayerPos = nullptr;
+    MemoryInstance::floatBE* zPlayerPos = nullptr;
 
     char keycodeActor_inputKeycode[2] = "";
     char keycodeActor_inputActorName[128] = "";
     int keycodeActor_inputNum = 1;
+    bool keycodeActor_offsetFromPlayerPos = true;
+    float keycodeActor_xOffset = 0;
+    float keycodeActor_yOffset = 3; // 3 is just sorta a default value that works well.
+    float keycodeActor_zOffset = 0;
     bool keycodeActor_inputActorRandomized = false;
     bool keycodeActor_inputWeaponsRandomized = false;
 
     char damageActor_inputActorName[128] = "";
     int damageActor_inputNum = 1;
+    bool damageActor_offsetFromPlayerPos = true;
+    float damageActor_xOffset = 0;
+    float damageActor_yOffset = 3; // 3 is just sorta a default value that works well.
+    float damageActor_zOffset = 0;
     bool damageActor_inputActorRandomized = false;
     bool damageActor_inputWeaponsRandomized = false;
 
@@ -56,11 +71,17 @@ void DrawKeycodeActorWindow() {
     ImGui::InputTextWithHint("Keycode##keycodeActor", "Keycode", UIProcessor::keycodeActor_inputKeycode, 2); // Idk why 2 instead of 1, but ensures that only one char can be entered
     ImGui::InputTextWithHint("Actor Name##keycodeActor", "Actor Name", UIProcessor::keycodeActor_inputActorName, IM_ARRAYSIZE(UIProcessor::keycodeActor_inputActorName));
     ImGui::SliderInt("Num##keycodeActor", &UIProcessor::keycodeActor_inputNum, 1, 100);
+    float offset[] = { UIProcessor::keycodeActor_xOffset, UIProcessor::keycodeActor_yOffset, UIProcessor::keycodeActor_zOffset };
+    ImGui::DragFloat3("Offset##keyCodeActor", offset, 1.f, std::numeric_limits<float>::min(), std::numeric_limits<float>::max(), "%.4f", 1.f);
+    UIProcessor::keycodeActor_xOffset = offset[0];
+    UIProcessor::keycodeActor_yOffset = offset[1];
+    UIProcessor::keycodeActor_zOffset = offset[2];
+    ImGui::Checkbox("Offset From Player Pos##keyCodeActor", &UIProcessor::keycodeActor_offsetFromPlayerPos);
     ImGui::Checkbox("Variant Randomized##keycodeActor", &UIProcessor::keycodeActor_inputActorRandomized);
     ImGui::Checkbox("Weapons Randomized##keycodeActor", &UIProcessor::keycodeActor_inputWeaponsRandomized);
     if (ImGui::Button("Add Actor##keycodeActor") && std::strcmp(UIProcessor::keycodeActor_inputKeycode, "") && std::strcmp(UIProcessor::keycodeActor_inputActorName, "")) {
         std::vector<TriggeredActor> actVec;
-        actVec.push_back(TriggeredActor(UIProcessor::keycodeActor_inputActorName, UIProcessor::keycodeActor_inputNum, UIProcessor::keycodeActor_inputActorRandomized, UIProcessor::keycodeActor_inputWeaponsRandomized));
+        actVec.push_back(TriggeredActor(UIProcessor::keycodeActor_inputActorName, UIProcessor::keycodeActor_inputNum, UIProcessor::keycodeActor_xOffset, UIProcessor::keycodeActor_yOffset, UIProcessor::keycodeActor_zOffset, UIProcessor::keycodeActor_offsetFromPlayerPos, UIProcessor::keycodeActor_inputActorRandomized, UIProcessor::keycodeActor_inputWeaponsRandomized));
         if (UIProcessor::keyCodeMap->count(std::toupper(UIProcessor::keycodeActor_inputKeycode[0])) == 0) {
             UIProcessor::keyCodeMap->insert({ std::toupper(UIProcessor::keycodeActor_inputKeycode[0]), actVec });
             UIProcessor::prevKeyStateMap->emplace(std::toupper(UIProcessor::keycodeActor_inputKeycode[0]), false);
@@ -122,10 +143,16 @@ void DrawDamageActorWindow() {
 
     ImGui::InputTextWithHint("Actor Name##damageActor", "Actor Name", UIProcessor::damageActor_inputActorName, IM_ARRAYSIZE(UIProcessor::keycodeActor_inputActorName));
     ImGui::SliderInt("Num##damageActor", &UIProcessor::damageActor_inputNum, 1, 100);
+    float offset[] = {UIProcessor::damageActor_xOffset, UIProcessor::damageActor_yOffset, UIProcessor::damageActor_zOffset};
+    ImGui::DragFloat3("Offset##damageActor", offset, 1.f, std::numeric_limits<float>::min(), std::numeric_limits<float>::max(), "%.4f", 1.f);
+    UIProcessor::damageActor_xOffset = offset[0];
+    UIProcessor::damageActor_yOffset = offset[1];
+    UIProcessor::damageActor_zOffset = offset[2];
+    ImGui::Checkbox("Offset From Player Pos##damageActor", &UIProcessor::damageActor_offsetFromPlayerPos);
     ImGui::Checkbox("Variant Randomized##damageActor", &UIProcessor::damageActor_inputActorRandomized);
     ImGui::Checkbox("Weapons Randomized##damageActor", &UIProcessor::damageActor_inputWeaponsRandomized);
     if (ImGui::Button("Add Actor##damageActor")) {
-        UIProcessor::damageActors->push_back(TriggeredActor(UIProcessor::damageActor_inputActorName, UIProcessor::damageActor_inputNum, UIProcessor::damageActor_inputActorRandomized, UIProcessor::damageActor_inputWeaponsRandomized));
+        UIProcessor::damageActors->push_back(TriggeredActor(UIProcessor::damageActor_inputActorName, UIProcessor::damageActor_inputNum, UIProcessor::damageActor_xOffset, UIProcessor::damageActor_yOffset, UIProcessor::damageActor_zOffset, UIProcessor::damageActor_offsetFromPlayerPos, UIProcessor::damageActor_inputActorRandomized, UIProcessor::damageActor_inputWeaponsRandomized));
     }
 
     ImGui::Indent(25);
@@ -177,6 +204,19 @@ void DrawLoadSaveWindow() {
     ImGui::End();
 }
 
+void DrawInfoWindow() {
+    ImGui::Begin("Info");
+
+    if (UIProcessor::xPlayerPos != nullptr && UIProcessor::yPlayerPos != nullptr && UIProcessor::zPlayerPos != nullptr) {
+        ImGui::Text("Player Position:");
+        ImGui::Text(std::to_string(*UIProcessor::xPlayerPos).c_str());
+        ImGui::Text(std::to_string(*UIProcessor::yPlayerPos).c_str());
+        ImGui::Text(std::to_string(*UIProcessor::zPlayerPos).c_str());
+    }
+
+    ImGui::End();
+}
+
 /// <summary>
 /// This is the actual ImGui drawing code
 /// </summary>
@@ -185,6 +225,7 @@ void DrawItems() {
     DrawKeycodeActorWindow();
     DrawDamageActorWindow();
     DrawLoadSaveWindow();
+    DrawInfoWindow();
     
 
 #ifndef NDEBUG
@@ -332,7 +373,11 @@ namespace UIProcessor {
             {
                 keyCodeMapping.push_back({ 
                     { "Name", iter->second[i].Name }, 
-                    { "Num", iter->second[i].Num }, 
+                    { "Num", iter->second[i].Num },
+                    { "XOffset", iter->second[i].XOffset},
+                    { "YOffset", iter->second[i].YOffset},
+                    { "ZOffset", iter->second[i].ZOffset},
+                    { "OffsetFromPlayerPos", iter->second[i].AddPlayerPosOffset},
                     { "ActorRandomized", iter->second[i].ActorRandomized }, 
                     { "WeaponsRandomized", iter->second[i].WeaponsRandomized } 
                     });
@@ -345,6 +390,10 @@ namespace UIProcessor {
             saved["DamageActors"].push_back({
                 { "Name", (*damageActors)[i].Name},
                 { "Num", (*damageActors)[i].Num },
+                { "XOffset", (*damageActors)[i].XOffset},
+                { "YOffset", (*damageActors)[i].YOffset},
+                { "ZOffset", (*damageActors)[i].ZOffset},
+                { "OffsetFromPlayerPos", (*damageActors)[i].AddPlayerPosOffset},
                 { "ActorRandomized", (*damageActors)[i].ActorRandomized },
                 { "WeaponsRandomized", (*damageActors)[i].WeaponsRandomized }
                 });
@@ -365,7 +414,7 @@ namespace UIProcessor {
         for (nlohmann::json::iterator keycodeIter = loaded["KeyCodeActors"].begin(); keycodeIter != loaded["KeyCodeActors"].end(); keycodeIter++) {
             std::vector<TriggeredActor> actors;
             for (nlohmann::json::iterator actorIter = keycodeIter.value().begin(); actorIter != keycodeIter.value().end(); actorIter++) {
-                actors.push_back(TriggeredActor(actorIter.value()["Name"], actorIter.value()["Num"], actorIter.value()["ActorRandomized"], actorIter.value()["WeaponsRandomized"]));
+                actors.push_back(TriggeredActor(actorIter.value()["Name"], actorIter.value()["Num"], actorIter.value()["XOffset"], actorIter.value()["YOffset"], actorIter.value()["ZOffset"], actorIter.value()["OffsetFromPlayerPos"], actorIter.value()["ActorRandomized"], actorIter.value()["WeaponsRandomized"]));
             }
             keyCodeMap->insert(std::pair(keycodeIter.key()[0], actors));
             prevKeyStateMap->emplace(keycodeIter.key()[0], false);
@@ -373,7 +422,7 @@ namespace UIProcessor {
 
         damageActors->clear();
         for (nlohmann::json::iterator actorIter = loaded["DamageActors"].begin(); actorIter != loaded["DamageActors"].end(); actorIter++) {
-            damageActors->push_back(TriggeredActor(actorIter.value()["Name"], actorIter.value()["Num"], actorIter.value()["ActorRandomized"], actorIter.value()["WeaponsRandomized"]));
+            damageActors->push_back(TriggeredActor(actorIter.value()["Name"], actorIter.value()["Num"], actorIter.value()["XOffset"], actorIter.value()["YOffset"], actorIter.value()["ZOffset"], actorIter.value()["OffsetFromPlayerPos"], actorIter.value()["ActorRandomized"], actorIter.value()["WeaponsRandomized"]));
         }
     }
 }

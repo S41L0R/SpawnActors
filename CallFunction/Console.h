@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "util/BotwEdit.h"
-#include "KeyCodeActor.h"
+#include "TriggeredActor.h"
 
 #include "Windows.h"
 

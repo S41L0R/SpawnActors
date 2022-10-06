@@ -8,7 +8,7 @@
 #include "util/BotwEdit.h"
 #include "UI.h"
 #include "Console.h"
-#include "KeyCodeActor.h"
+#include "TriggeredActor.h"
 #include "ActorData.h"
 
 #include "Windows.h"
@@ -17,7 +17,9 @@
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 
-
+#define NOMINMAX // Because cpp is stupid
+#undef min // Because the last thing doesn't work.
+#undef max // Cpp is stupid.
 
 // This stuff here was yoinked from BetterVR
 // -----------------------------------------
@@ -237,7 +239,6 @@ void queueRandomWeapons(QueueActor* queueActor, ActorData::Enemy* enemyActor) {
 	}
 }
 
-uint8_t lastHealth = 0xff;
 void queueActors() {
 	keycode_mutex.lock();
 
@@ -250,34 +251,41 @@ void queueActors() {
 			keyPressed = true;
 
 		if (keyPressed && !prevKeyStateMap.find(keyCodeMapIter->first)->second) { // Make sure the key is pressed this frame and wasn't last frame
-			for (TriggeredActor keyCodeActor : keyCodeMapIter->second) {
-				for (int i = 0; i < keyCodeActor.Num; i++) {
+			for (TriggeredActor damageAct : keyCodeMapIter->second) {
+				for (int i = 0; i < damageAct.Num; i++) {
 					QueueActor queueActor;
-					queueActor.Name = keyCodeActor.Name; // Set actor name - might be changed later with randomization features, though.
+					queueActor.Name = damageAct.Name; // Set actor name - might be changed later with randomization features, though.
 
 					// Enemy-specific randomization features
-					if (keyCodeActor.ActorRandomized || keyCodeActor.WeaponsRandomized) {
+					if (damageAct.ActorRandomized || damageAct.WeaponsRandomized) {
 						for (std::map<std::string, ActorData::Enemy>::iterator iter = ActorData::EnemyClasses.begin(); iter != ActorData::EnemyClasses.end(); ++iter) {
-							if (!keyCodeActor.Name.find(iter->first, 0) == 0)
+							if (!damageAct.Name.find(iter->first, 0) == 0)
 								continue;
 							ActorData::Enemy enemyActor = iter->second;
 							std::string name = iter->first;
 
 							// Sets actor variants if requested
-							if (keyCodeActor.ActorRandomized) {
+							if (damageAct.ActorRandomized) {
 								
 								queueActor.Name = getRandomActorVariant(name, &enemyActor); // Override queue actor name
 							}
 
-							if (keyCodeActor.WeaponsRandomized) {
+							if (damageAct.WeaponsRandomized) {
 								queueRandomWeapons(&queueActor, &enemyActor);
 							}
 						}
 					}
 
-					queueActor.PosX = (float)*memInstance->linkData.PosX;
-					queueActor.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
-					queueActor.PosZ = (float)*memInstance->linkData.PosZ;
+					if (damageAct.AddPlayerPosOffset) {
+						queueActor.PosX = damageAct.XOffset + (float)*memInstance->linkData.PosX;
+						queueActor.PosY = damageAct.YOffset + (float)*memInstance->linkData.PosY;
+						queueActor.PosZ = damageAct.ZOffset + (float)*memInstance->linkData.PosZ;
+					}
+					else {
+						queueActor.PosX = damageAct.XOffset;
+						queueActor.PosY = damageAct.YOffset;
+						queueActor.PosZ = damageAct.ZOffset;
+					}
 
 					queue_mutex.lock(); ////////////////////////////////////////
 					queuedActors.push_back(queueActor);
@@ -404,6 +412,9 @@ void mainFn(PPCInterpreter_t* hCPU, uint32_t startTrnsData, uint32_t startRingBu
 
 	if (!isSetup) {
 		memInstance->RuntimeInit();
+		UIProcessor::xPlayerPos = memInstance->linkData.PosX;
+		UIProcessor::yPlayerPos = memInstance->linkData.PosY;
+		UIProcessor::zPlayerPos = memInstance->linkData.PosZ;
 		setup(hCPU, startTrnsData);
 		return;
 	}
@@ -448,37 +459,45 @@ void onDamage(PPCInterpreter_t* hCPU) {
 	if (damageActors.size() == 0)
 		return;
 
-	TriggeredActor act = damageActors.at((size_t)((static_cast <float>(std::rand())/static_cast<float> (RAND_MAX)) * damageActors.size()));
+	TriggeredActor triggeredAct = damageActors.at((size_t)((static_cast <float>(std::rand())/static_cast<float> (RAND_MAX)) * damageActors.size()));
 
 
 	//for (std::vector<TriggeredActor>::iterator damageActorsIter = damageActors.begin(); damageActorsIter != damageActors.end(); ++damageActorsIter) {
-		for (int i = 0; i < act.Num; i++) {
+		for (int i = 0; i < triggeredAct.Num; i++) {
 			QueueActor queueActor;
-			queueActor.Name = act.Name;
+			queueActor.Name = triggeredAct.Name;
 
 			// Enemy-specific randomization features
-			if (act.ActorRandomized || act.WeaponsRandomized) {
+			if (triggeredAct.ActorRandomized || triggeredAct.WeaponsRandomized) {
 				for (std::map<std::string, ActorData::Enemy>::iterator iter = ActorData::EnemyClasses.begin(); iter != ActorData::EnemyClasses.end(); ++iter) {
-					if (!act.Name.find(iter->first, 0) == 0)
+					if (!triggeredAct.Name.find(iter->first, 0) == 0)
 						continue;
 					ActorData::Enemy enemyActor = iter->second;
 					std::string name = iter->first;
 
 					// Sets actor variants if requested
-					if (act.ActorRandomized) {
+					if (triggeredAct.ActorRandomized) {
 
 						queueActor.Name = getRandomActorVariant(name, &enemyActor); // Override queue actor name
 					}
 
-					if (act.WeaponsRandomized) {
+					if (triggeredAct.WeaponsRandomized) {
 						queueRandomWeapons(&queueActor, &enemyActor);
 					}
 				}
 			}
 
-			queueActor.PosX = (float)*memInstance->linkData.PosX;
-			queueActor.PosY = (float)*memInstance->linkData.PosY + 3; // A bit of an offset so stuff (especially weapons) doesn't spawn underground
-			queueActor.PosZ = (float)*memInstance->linkData.PosZ;
+			if (triggeredAct.AddPlayerPosOffset) {
+				queueActor.PosX = triggeredAct.XOffset + (float)*memInstance->linkData.PosX;
+				queueActor.PosY = triggeredAct.YOffset + (float)*memInstance->linkData.PosY;
+				queueActor.PosZ = triggeredAct.ZOffset + (float)*memInstance->linkData.PosZ;
+			}
+			else {
+				queueActor.PosX = triggeredAct.XOffset;
+				queueActor.PosY = triggeredAct.YOffset;
+				queueActor.PosZ = triggeredAct.ZOffset;
+			}
+
 
 			queue_mutex.lock(); ////////////////////////////////////////
 			queuedActors.push_back(queueActor);
